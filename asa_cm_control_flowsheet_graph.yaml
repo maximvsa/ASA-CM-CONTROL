@@ -1,0 +1,540 @@
+schema_version: 0.1
+
+meta:
+  flowsheet: ASA_Continuous_Process
+  basis: "Process Flow Diagram (PFD) connectivity graph — P&ID-lite"
+  conventions:
+    node_id: "N### = internal unique node ID (graph identifier)"
+    tag: "Plant-style equipment/instrument tag (what you'd place on PFD/P&ID)"
+    area: "Section number for grouping (100 feeds, 200 reaction, 300 crystallization, 400 isolation, 500 recovery, 600 finishing)"
+    loop: "Optional control loop tag (e.g., FIC-201) indicating primary controller association"
+  scope_notes:
+    - "P&ID-lite: includes major metering elements (pump/filter/FT/FCV) and key skids; omits manual isolation valves, check valves, relief devices, vents/drains."
+    - "Catalyst (conc. H2SO4) is introduced at the reactor inlet mixer (close-coupled) to minimize pre-reaction holdup."
+    - "Route 1 isolation: cooling-only crystallization (no antisolvent) → pusher centrifuge with displacement cake wash."
+    - "Solvent recovery shown as a single vacuum volatiles-recovery column (with condenser + reflux drum). Overhead liquid recycled; bottoms purged."
+    - "Drying via fluidized bed dryer; inerting/offgas handling TBD at later design stage."
+
+nodes:
+  # -------------------------
+  # 100 — Feed / storage / metering (P&ID-lite)
+  # -------------------------
+  N110:
+    name: Salicylic Acid Day Hopper
+    type: solids_storage
+    area: 100
+    tag: H-101
+    ports:
+      in:  [sa_makeup_in]
+      out: [sa_out]
+
+  N115:
+    name: Salicylic Acid Loss-in-Weight Feeder
+    type: loss_in_weight_feeder
+    area: 100
+    tag: FD-101
+    loop: FIC-101
+    ports:
+      in:  [sa_in]
+      out: [sa_metered_out]
+
+  N120:
+    name: Acetic Anhydride Day Tank
+    type: storage_tank
+    area: 100
+    tag: TK-201
+    loop: LIC-201
+    ports:
+      in:  [aa_makeup_in, aa_recycle_in]
+      out: [aa_out]
+
+  N121:
+    name: Acetic Anhydride Feed Pump (Duty/Standby)
+    type: pump
+    area: 100
+    tag: P-201A/B
+    ports:
+      in:  [aa_in]
+      out: [aa_pumped_out]
+
+  N122:
+    name: Acetic Anhydride Inline Strainer/Filter
+    type: filter
+    area: 100
+    tag: F-201
+    ports:
+      in:  [feed_in]
+      out: [filtrate_out]
+
+  N123:
+    name: Acetic Anhydride Coriolis Flow Transmitter
+    type: flow_meter
+    area: 100
+    tag: FT-201
+    loop: FIC-201
+    ports:
+      in:  [in]
+      out: [out]
+
+  N124:
+    name: Acetic Anhydride Flow Control Valve
+    type: control_valve
+    area: 100
+    tag: FCV-201
+    loop: FIC-201
+    ports:
+      in:  [in]
+      out: [out]
+
+  N130:
+    name: SA Wetting Tee / Eductor (AA + SA, no catalyst)
+    type: wetting_mixer
+    area: 100
+    tag: MX-210
+    ports:
+      in:  [aa_in, sa_in]
+      out: [slurry_out]
+
+  N140:
+    name: SA/AA Slurry Prep / Hold Tank (no catalyst)
+    type: slurry_make_tank
+    area: 100
+    tag: TK-210
+    loop: LIC-210
+    ports:
+      in:  [slurry_in]
+      out: [slurry_out]
+
+  N141:
+    name: Reactor Feed Pump (slurry service)
+    type: pump
+    area: 100
+    tag: P-210A/B
+    ports:
+      in:  [slurry_in]
+      out: [slurry_pumped_out]
+
+  N142:
+    name: Reactor Feed Flow Transmitter
+    type: flow_meter
+    area: 100
+    tag: FT-210
+    loop: FIC-210
+    ports:
+      in:  [in]
+      out: [out]
+
+  N150:
+    name: Sulfuric Acid Day Tank (conc. H2SO4)
+    type: storage_tank
+    area: 100
+    tag: TK-301
+    loop: LIC-301
+    ports:
+      in:  [h2so4_makeup_in]
+      out: [h2so4_out]
+
+  N151:
+    name: Sulfuric Acid Metering Pump (Duty/Standby)
+    type: metering_pump
+    area: 100
+    tag: P-301A/B
+    loop: FIC-301
+    ports:
+      in:  [acid_in]
+      out: [acid_pumped_out]
+
+  N152:
+    name: Sulfuric Acid Flow Transmitter
+    type: flow_meter
+    area: 100
+    tag: FT-301
+    loop: FIC-301
+    ports:
+      in:  [in]
+      out: [out]
+
+  # -------------------------
+  # 200 — Reaction
+  # -------------------------
+  N210:
+    name: Reactor Inlet Static Mixer / Catalyst Injection (close-coupled)
+    type: static_mixer
+    area: 200
+    tag: SM-101
+    ports:
+      in:  [slurry_in, acid_in]
+      out: [mixed_feed_out]
+
+  N220:
+    name: ASA Acetylation Reactor (AS + AA, H2SO4-catalyzed)
+    type: reactor
+    area: 200
+    tag: R-101
+    loop: TIC-101
+    ports:
+      in:  [feed_in]
+      out: [rxn_out]
+
+  # -------------------------
+  # 300 — Crystallization (2-stage cooled) + seed skid
+  # -------------------------
+  N305:
+    name: ASA Seed Takeoff (product split)
+    type: splitter
+    area: 300
+    tag: SPL-601
+    ports:
+      in:  [powder_in]
+      out: [product_out, seed_recycle_out]
+
+  N310:
+    name: ASA Seed Slurry Skid
+    type: seed_slurry_skid
+    area: 300
+    tag: SS-301
+    loop: LIC-311
+    ports:
+      in:  [seed_makeup_in, solvent_in]
+      out: [seed_slurry_out]
+
+  N315:
+    name: Seed Distribution Manifold
+    type: splitter
+    area: 300
+    tag: SPL-302
+    ports:
+      in:  [seed_in]
+      out: [seed1_out, seed2_out]
+
+  N320:
+    name: Cooled Crystallizer 1 (Nucleation)
+    type: crystallizer
+    area: 300
+    tag: CR-101A
+    loop: TIC-201
+    ports:
+      in:  [feed_in, seed_in]
+      out: [slurry_out]
+
+  N330:
+    name: Cooled Crystallizer 2 (Growth)
+    type: crystallizer
+    area: 300
+    tag: CR-101B
+    loop: TIC-202
+    ports:
+      in:  [feed_in, seed_in]
+      out: [slurry_out]
+
+  # -------------------------
+  # 400 — Solids isolation (pusher centrifuge + wash)
+  # -------------------------
+  N405:
+    name: Cake Wash Solvent Tank (AcOH / recycle blend)
+    type: storage_tank
+    area: 400
+    tag: TK-401
+    loop: LIC-401
+    ports:
+      in:  [wash_makeup_in, wash_recycle_in]
+      out: [wash_out]
+
+  N410:
+    name: Pusher Centrifuge + Displacement Cake Wash
+    type: pusher_centrifuge
+    area: 400
+    tag: CF-401
+    ports:
+      in:  [slurry_in, wash_in]
+      out: [wet_cake_out, centrate_out]
+
+  # -------------------------
+  # 500 — Solvent recovery / recycle (single-column PFD representation)
+  # -------------------------
+  N430:
+    name: Mother Liquor Receiver (from centrifuge)
+    type: storage_tank
+    area: 500
+    tag: TK-501
+    loop: LIC-501
+    ports:
+      in:  [liquor_in]
+      out: [liquor_out]
+
+  N440:
+    name: Solvent Recovery Column (Vacuum Volatiles Recovery)
+    type: distillation_column
+    area: 500
+    tag: T-501
+    loop: PIC-501
+    ports:
+      in:  [feed_in, reflux_in]
+      out: [overhead_vapor_out, bottoms_out]
+
+  N441:
+    name: Overhead Condenser
+    type: heat_exchanger
+    area: 500
+    tag: E-501
+    loop: TIC-501
+    ports:
+      in:  [vapor_in]
+      out: [condensate_out]
+
+  N442:
+    name: Reflux Drum / Distillate Receiver
+    type: storage_tank
+    area: 500
+    tag: V-501
+    loop: LIC-502
+    ports:
+      in:  [condensate_in]
+      out: [reflux_out, distillate_out]
+
+  N450:
+    name: Recovered Volatiles Tank (AA/AcOH recycle blend)
+    type: storage_tank
+    area: 500
+    tag: TK-502
+    loop: LIC-503
+    ports:
+      in:  [distillate_in]
+      out: [recycle_out]
+
+  N455:
+    name: Recycle Splitter (to AA tank / wash tank / seed solvent)
+    type: splitter
+    area: 500
+    tag: SPL-503
+    ports:
+      in:  [recycle_in]
+      out: [aa_recycle_out, wash_recycle_out, seed_solvent_out]
+
+  N460:
+    name: Column Bottoms Purge / Neutralization (TBD)
+    type: waste_sink
+    area: 500
+    tag: WT-501
+    ports:
+      in:  [waste_in]
+      out: []
+
+  # -------------------------
+  # 600 — Drying / finishing
+  # -------------------------
+  N510:
+    name: Fluidized Bed Dryer
+    type: dryer
+    area: 600
+    tag: DR-601
+    loop: TIC-601
+    ports:
+      in:  [wet_solid_in]
+      out: [dry_powder_out]
+
+  N520:
+    name: ASA Product Bin
+    type: product_bin
+    area: 600
+    tag: BN-601
+    loop: LIC-601
+    ports:
+      in:  [product_in]
+      out: [product_out]
+
+edges:
+  # --- Salicylic acid solids train ---
+  - id: S110_115_SA
+    from: { node: N110, port: sa_out }
+    to:   { node: N115, port: sa_in }
+    tags: { phase_guess: S, role: solids_feed, control: "FIC-101 (LIW feeder)" }
+
+  - id: S115_130_SA
+    from: { node: N115, port: sa_metered_out }
+    to:   { node: N130, port: sa_in }
+    tags: { phase_guess: S, role: solids_feed, control: "ratio to AA via FT-201 → FIC-101" }
+
+  # --- Acetic anhydride metered liquid train ---
+  - id: S120_121_AA
+    from: { node: N120, port: aa_out }
+    to:   { node: N121, port: aa_in }
+    tags: { phase_guess: L, role: reagent_feed }
+
+  - id: S121_122_AA
+    from: { node: N121, port: aa_pumped_out }
+    to:   { node: N122, port: feed_in }
+    tags: { phase_guess: L, role: reagent_feed }
+
+  - id: S122_123_AA
+    from: { node: N122, port: filtrate_out }
+    to:   { node: N123, port: in }
+    tags: { phase_guess: L, role: metering }
+
+  - id: S123_124_AA
+    from: { node: N123, port: out }
+    to:   { node: N124, port: in }
+    tags: { phase_guess: L, role: metering, control: "FIC-201" }
+
+  - id: S124_130_AA
+    from: { node: N124, port: out }
+    to:   { node: N130, port: aa_in }
+    tags: { phase_guess: L, role: wetting_liquid }
+
+  # --- Wetting + slurry prep (no catalyst) ---
+  - id: S130_140_SLURRY
+    from: { node: N130, port: slurry_out }
+    to:   { node: N140, port: slurry_in }
+    tags: { phase_guess: "L+S", role: slurry_prep }
+
+  - id: S140_141_SLURRY
+    from: { node: N140, port: slurry_out }
+    to:   { node: N141, port: slurry_in }
+    tags: { phase_guess: "L+S", role: reactor_feed }
+
+  - id: S141_142_SLURRY
+    from: { node: N141, port: slurry_pumped_out }
+    to:   { node: N142, port: in }
+    tags: { phase_guess: "L+S", role: reactor_feed }
+
+  - id: S142_210_SLURRY
+    from: { node: N142, port: out }
+    to:   { node: N210, port: slurry_in }
+    tags: { phase_guess: "L+S", role: reactor_feed }
+
+  # --- Sulfuric acid catalyst (separate until inlet mixer) ---
+  - id: S150_151_H2SO4
+    from: { node: N150, port: h2so4_out }
+    to:   { node: N151, port: acid_in }
+    tags: { phase_guess: L, role: catalyst_feed }
+
+  - id: S151_152_H2SO4
+    from: { node: N151, port: acid_pumped_out }
+    to:   { node: N152, port: in }
+    tags: { phase_guess: L, role: catalyst_feed, control: "FIC-301" }
+
+  - id: S152_210_H2SO4
+    from: { node: N152, port: out }
+    to:   { node: N210, port: acid_in }
+    tags: { phase_guess: L, role: catalyst_injection, control: "ratio to AA via FT-201 → FIC-301" }
+
+  # --- Inlet mixing + reactor ---
+  - id: S210_220_FEED
+    from: { node: N210, port: mixed_feed_out }
+    to:   { node: N220, port: feed_in }
+    tags: { phase_guess: "L (+S possible)", role: mixed_reactor_feed }
+
+  - id: S220_320_RXN
+    from: { node: N220, port: rxn_out }
+    to:   { node: N320, port: feed_in }
+    tags: { phase_guess: L, role: crystallizer_feed }
+
+  # --- Seed skid (seeded 2-stage crystallization) ---
+  - id: S510_305_DRYPOW
+    from: { node: N510, port: dry_powder_out }
+    to:   { node: N305, port: powder_in }
+    tags: { phase_guess: S, role: product_split }
+
+  - id: S305_520_PRODUCT
+    from: { node: N305, port: product_out }
+    to:   { node: N520, port: product_in }
+    tags: { phase_guess: S, role: product }
+
+  - id: S305_310_SEED_SOLIDS
+    from: { node: N305, port: seed_recycle_out }
+    to:   { node: N310, port: seed_makeup_in }
+    tags: { phase_guess: S, role: seed_makeup }
+
+  - id: S455_310_SEED_SOLVENT
+    from: { node: N455, port: seed_solvent_out }
+    to:   { node: N310, port: solvent_in }
+    tags: { phase_guess: L, role: seed_slurry_solvent }
+
+  - id: S310_315_SEED_SLURRY
+    from: { node: N310, port: seed_slurry_out }
+    to:   { node: N315, port: seed_in }
+    tags: { phase_guess: "L+S", role: seed }
+
+  - id: S315_320_SEED1
+    from: { node: N315, port: seed1_out }
+    to:   { node: N320, port: seed_in }
+    tags: { phase_guess: "L+S", role: seed }
+
+  - id: S315_330_SEED2
+    from: { node: N315, port: seed2_out }
+    to:   { node: N330, port: seed_in }
+    tags: { phase_guess: "L+S", role: seed }
+
+  # --- Crystallizer train ---
+  - id: S320_330_SLURRY1
+    from: { node: N320, port: slurry_out }
+    to:   { node: N330, port: feed_in }
+    tags: { phase_guess: "L+S", role: staged_crystallization }
+
+  - id: S330_410_SLURRY2
+    from: { node: N330, port: slurry_out }
+    to:   { node: N410, port: slurry_in }
+    tags: { phase_guess: "L+S", role: solids_separation_feed }
+
+  # --- Cake wash (inside centrifuge) ---
+  - id: S405_410_WASH
+    from: { node: N405, port: wash_out }
+    to:   { node: N410, port: wash_in }
+    tags: { phase_guess: L, role: cake_wash }
+
+  # --- Centrifuge outputs ---
+  - id: S410_510_WET_CAKE
+    from: { node: N410, port: wet_cake_out }
+    to:   { node: N510, port: wet_solid_in }
+    tags: { phase_guess: S, role: dryer_feed }
+
+  - id: S410_430_CENTRATE
+    from: { node: N410, port: centrate_out }
+    to:   { node: N430, port: liquor_in }
+    tags: { phase_guess: L, role: solvent_recovery_feed }
+
+  # --- Solvent recovery column with condenser + reflux drum ---
+  - id: S430_440_LIQUOR
+    from: { node: N430, port: liquor_out }
+    to:   { node: N440, port: feed_in }
+    tags: { phase_guess: L, role: distillation_feed }
+
+  - id: S440_441_OVHD
+    from: { node: N440, port: overhead_vapor_out }
+    to:   { node: N441, port: vapor_in }
+    tags: { phase_guess: G, role: overhead }
+
+  - id: S441_442_COND
+    from: { node: N441, port: condensate_out }
+    to:   { node: N442, port: condensate_in }
+    tags: { phase_guess: L, role: condensed_overhead }
+
+  - id: S442_440_REFLUX
+    from: { node: N442, port: reflux_out }
+    to:   { node: N440, port: reflux_in }
+    tags: { phase_guess: L, role: reflux }
+
+  - id: S442_450_DIST
+    from: { node: N442, port: distillate_out }
+    to:   { node: N450, port: distillate_in }
+    tags: { phase_guess: L, role: recovered_volatiles, note: "HOAc/AA recycle blend" }
+
+  - id: S450_455_RECYCLE
+    from: { node: N450, port: recycle_out }
+    to:   { node: N455, port: recycle_in }
+    tags: { phase_guess: L, role: recycle_distribution }
+
+  - id: S455_120_AA_REC
+    from: { node: N455, port: aa_recycle_out }
+    to:   { node: N120, port: aa_recycle_in }
+    tags: { phase_guess: L, role: recycle_to_AA_tank }
+
+  - id: S455_405_WASH_REC
+    from: { node: N455, port: wash_recycle_out }
+    to:   { node: N405, port: wash_recycle_in }
+    tags: { phase_guess: L, role: recycle_to_wash }
+
+  - id: S440_460_BOTTOMS
+    from: { node: N440, port: bottoms_out }
+    to:   { node: N460, port: waste_in }
+    tags: { phase_guess: L, role: purge, note: "H2SO4 + heavies + nonvolatiles" }

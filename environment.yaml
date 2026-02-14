@@ -1,0 +1,16 @@
+name: asa-cm-control-env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - idaes-pse
+  - numpy
+  - pandas
+  - matplotlib
+  - scipy
+  - pytest
+  - ruff
+  - black
+  - pip
+  - pip:
+      - pre-commit

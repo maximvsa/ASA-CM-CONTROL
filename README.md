@@ -47,3 +47,35 @@ Expected output includes:
 ```bash
 pytest -q
 ```
+
+## Visualize flowsheet + inspect DOF
+
+Generate a connectivity diagram and a DOF report from the current model scaffold:
+
+```bash
+python scripts/visualize_and_report_dof.py
+```
+
+Artifacts are written to:
+- `artifacts/flowsheet/steady_state_flowsheet.mmd`
+- `artifacts/flowsheet/steady_state_dof_report.txt`
+
+Optional: include current stream flow values (if available from current model state):
+
+```bash
+python scripts/visualize_and_report_dof.py --with-values
+```
+
+### Launch IDAES built-in visualizer
+
+If `idaes_ui` is installed:
+
+```bash
+python scripts/visualize_idaes_ui.py
+```
+
+Custom title/save path:
+
+```bash
+python scripts/visualize_idaes_ui.py --title "ASA CM Demo" --save asa_cm_demo_vis.json --save-dir artifacts/flowsheet
+```

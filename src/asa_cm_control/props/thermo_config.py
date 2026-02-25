@@ -8,7 +8,7 @@ from idaes.models.properties.modular_properties.pure.ConstantProperties import C
 
 configuration = {
     "components": {
-        "AS": {
+        "SA": {
             "type": Component,
             "cp_mol_liq_comp": Constant.cp_mol_liq_comp,
             "enth_mol_liq_comp": Constant.enth_mol_liq_comp,

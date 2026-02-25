@@ -15,7 +15,7 @@ configuration = {
     "rate_reactions": {
         "R_as_to_asa": {
             "stoichiometry": {
-                ("Liq", "AS"): -1,
+                ("Liq", "SA"): -1,
                 ("Liq", "AA"): -1,
                 ("Liq", "ASA"): 1,
                 ("Liq", "AcOH"): 1,

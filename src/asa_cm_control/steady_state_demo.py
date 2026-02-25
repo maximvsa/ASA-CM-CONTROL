@@ -473,7 +473,7 @@ def build_model() -> ConcreteModel:
 
     m.fs.sa_makeup_feed_100.outlet.temperature[t0].fix(298.15)
     m.fs.sa_makeup_feed_100.outlet.pressure[t0].fix(101325.0)
-    m.fs.sa_makeup_feed_100.outlet.mole_frac_comp[t0, "AS"].fix(major)
+    m.fs.sa_makeup_feed_100.outlet.mole_frac_comp[t0, "SA"].fix(major)
     m.fs.sa_makeup_feed_100.outlet.mole_frac_comp[t0, "AA"].fix(eps)
     m.fs.sa_makeup_feed_100.outlet.mole_frac_comp[t0, "ASA"].fix(eps)
     m.fs.sa_makeup_feed_100.outlet.mole_frac_comp[t0, "AcOH"].fix(eps)
@@ -483,7 +483,7 @@ def build_model() -> ConcreteModel:
 
     m.fs.aa_makeup_feed_105.outlet.temperature[t0].fix(298.15)
     m.fs.aa_makeup_feed_105.outlet.pressure[t0].fix(101325.0)
-    m.fs.aa_makeup_feed_105.outlet.mole_frac_comp[t0, "AS"].fix(eps)
+    m.fs.aa_makeup_feed_105.outlet.mole_frac_comp[t0, "SA"].fix(eps)
     m.fs.aa_makeup_feed_105.outlet.mole_frac_comp[t0, "AA"].fix(major)
     m.fs.aa_makeup_feed_105.outlet.mole_frac_comp[t0, "ASA"].fix(eps)
     m.fs.aa_makeup_feed_105.outlet.mole_frac_comp[t0, "AcOH"].fix(eps)
@@ -494,7 +494,7 @@ def build_model() -> ConcreteModel:
     m.fs.h2so4_makeup_feed_145.outlet.flow_mol[t0].fix(0.01)
     m.fs.h2so4_makeup_feed_145.outlet.temperature[t0].fix(298.15)
     m.fs.h2so4_makeup_feed_145.outlet.pressure[t0].fix(101325.0)
-    m.fs.h2so4_makeup_feed_145.outlet.mole_frac_comp[t0, "AS"].fix(eps)
+    m.fs.h2so4_makeup_feed_145.outlet.mole_frac_comp[t0, "SA"].fix(eps)
     m.fs.h2so4_makeup_feed_145.outlet.mole_frac_comp[t0, "AA"].fix(eps)
     m.fs.h2so4_makeup_feed_145.outlet.mole_frac_comp[t0, "ASA"].fix(eps)
     m.fs.h2so4_makeup_feed_145.outlet.mole_frac_comp[t0, "AcOH"].fix(eps)
@@ -503,7 +503,7 @@ def build_model() -> ConcreteModel:
     m.fs.wash_makeup_feed_404.outlet.flow_mol[t0].fix(0.10)
     m.fs.wash_makeup_feed_404.outlet.temperature[t0].fix(298.15)
     m.fs.wash_makeup_feed_404.outlet.pressure[t0].fix(101325.0)
-    m.fs.wash_makeup_feed_404.outlet.mole_frac_comp[t0, "AS"].fix(eps)
+    m.fs.wash_makeup_feed_404.outlet.mole_frac_comp[t0, "SA"].fix(eps)
     m.fs.wash_makeup_feed_404.outlet.mole_frac_comp[t0, "AA"].fix(major)
     m.fs.wash_makeup_feed_404.outlet.mole_frac_comp[t0, "ASA"].fix(eps)
     m.fs.wash_makeup_feed_404.outlet.mole_frac_comp[t0, "AcOH"].fix(eps)
@@ -517,9 +517,9 @@ def build_model() -> ConcreteModel:
     m.fs.recycle_splitter_455.split_fraction[t0, "wash_recycle_out", "AcOH"].fix(0.60)
     m.fs.recycle_splitter_455.split_fraction[t0, "seed_solvent_out", "AcOH"].fix(0.399)
 
-    m.fs.recycle_splitter_455.split_fraction[t0, "aa_recycle_out", "AS"].fix(0.001)
-    m.fs.recycle_splitter_455.split_fraction[t0, "wash_recycle_out", "AS"].fix(0.4995)
-    m.fs.recycle_splitter_455.split_fraction[t0, "seed_solvent_out", "AS"].fix(0.4995)
+    m.fs.recycle_splitter_455.split_fraction[t0, "aa_recycle_out", "SA"].fix(0.001)
+    m.fs.recycle_splitter_455.split_fraction[t0, "wash_recycle_out", "SA"].fix(0.4995)
+    m.fs.recycle_splitter_455.split_fraction[t0, "seed_solvent_out", "SA"].fix(0.4995)
 
     m.fs.recycle_splitter_455.split_fraction[t0, "aa_recycle_out", "ASA"].fix(0.001)
     m.fs.recycle_splitter_455.split_fraction[t0, "wash_recycle_out", "ASA"].fix(0.4995)
@@ -546,7 +546,7 @@ def build_model() -> ConcreteModel:
     m.fs.mw_kg_per_mol = Param(
         m.fs.thermo_params.component_list,
         initialize={
-            "AS": 0.13812,
+            "SA": 0.13812,
             "AA": 0.10209,
             "ASA": 0.18016,
             "AcOH": 0.06005,
@@ -558,7 +558,7 @@ def build_model() -> ConcreteModel:
     m.fs.raw_material_price_per_kg = Param(
         m.fs.thermo_params.component_list,
         initialize={
-            "AS": 2.50,
+            "SA": 2.50,
             "AA": 1.60,
             "ASA": 0.00,
             "AcOH": 0.00,
@@ -693,11 +693,58 @@ def report_operating_costs(m: ConcreteModel):
     }
 
 
-def initialize_model_sequential(m: ConcreteModel, run_unit_initialization: bool = False):
+def report_top_constraint_violations(m: ConcreteModel, top_n: int = 15, tol: float = 1e-6):
+    violations = []
+    for con in m.component_data_objects(Constraint, active=True, descend_into=True):
+        body_val = value(con.body, exception=False)
+        if body_val is None:
+            continue
+
+        lower_val = value(con.lower, exception=False) if con.has_lb() else None
+        upper_val = value(con.upper, exception=False) if con.has_ub() else None
+
+        violation = 0.0
+        if lower_val is not None:
+            violation = max(violation, lower_val - body_val)
+        if upper_val is not None:
+            violation = max(violation, body_val - upper_val)
+
+        if violation > tol:
+            violations.append((violation, con.name, body_val, lower_val, upper_val))
+
+    violations.sort(key=lambda x: x[0], reverse=True)
+
+    if not violations:
+        print("No constraint violations above tolerance were detected.")
+        return []
+
+    print(f"Top {min(top_n, len(violations))} constraint violations (tol={tol}):")
+    for violation, name, body_val, lower_val, upper_val in violations[:top_n]:
+        print(
+            f"  {name}: violation={violation:.3e}, body={body_val:.6g}, "
+            f"lb={lower_val}, ub={upper_val}"
+        )
+
+    return violations
+
+
+def initialize_model_sequential(
+    m: ConcreteModel,
+    run_unit_initialization: bool = False,
+    iter_lim: int = 3,
+    display_report: bool = True,
+    tear_guess_s410mix_410split=None,
+    tear_guess_s442_440_reflux=None,
+    print_unit_status: bool = True,
+):
+    baseline_fixed_vars = {
+        var.name for var in m.component_data_objects(Var, descend_into=True) if var.fixed
+    }
+
     seq = SequentialDecomposition()
     seq.options.select_tear_method = "heuristic"
     seq.options.tear_method = "Wegstein"
-    seq.options.iterLim = 5
+    seq.options.iterLim = iter_lim
 
     def _unfix_port_states(unit):
         for port in unit.component_data_objects(Port, descend_into=False):
@@ -710,28 +757,202 @@ def initialize_model_sequential(m: ConcreteModel, run_unit_initialization: bool 
                     if hasattr(variable, "fixed") and variable.fixed:
                         variable.unfix()
 
+    def _unfix_all_nonbaseline_port_states():
+        for port in m.component_data_objects(Port, descend_into=True):
+            for member in port.vars.values():
+                if hasattr(member, "is_indexed") and member.is_indexed():
+                    variables = member.values()
+                else:
+                    variables = [member]
+                for variable in variables:
+                    if (
+                        hasattr(variable, "fixed")
+                        and variable.fixed
+                        and variable.name not in baseline_fixed_vars
+                    ):
+                        variable.unfix()
+
+    def _diagnose_overfixed(unit, max_report: int = 30):
+        local_dof = degrees_of_freedom(unit)
+        fixed_variables = [
+            var for var in unit.component_data_objects(Var, descend_into=True) if var.fixed
+        ]
+        print(
+            f"[DOF-DIAG] Unit={unit.name}; local_dof={local_dof}; "
+            f"fixed_vars={len(fixed_variables)}"
+        )
+        if local_dof >= 0:
+            return
+
+        impactful_variables = []
+        for var in fixed_variables:
+            var.unfix()
+            trial_dof = degrees_of_freedom(unit)
+            var.fix()
+            if trial_dof > local_dof:
+                impactful_variables.append((var.name, var.value, trial_dof - local_dof))
+
+        if not impactful_variables:
+            print("[DOF-DIAG] No single fixed variable changed local DOF when unfixed.")
+            return
+
+        impactful_variables.sort(key=lambda item: (-item[2], item[0]))
+        print("[DOF-DIAG] Fixed variables increasing local DOF when unfixed:")
+        for name, val, delta in impactful_variables[:max_report]:
+            print(f"[DOF-DIAG]   {name} ; value={val} ; dof_delta=+{delta}")
+
+    def _release_temporary_initialization_fixes():
+        released = 0
+        for var in m.component_data_objects(Var, descend_into=True):
+            if var.fixed and var.name not in baseline_fixed_vars:
+                var.unfix()
+                released += 1
+        if print_unit_status:
+            print(f"[SD-INIT] Released {released} temporary fixed variables from initialization.")
+
+    def _initialize_reactor_with_temporary_extent(unit):
+        t0 = m.fs.time.first()
+        extent_index = next(iter(unit.control_volume.rate_reaction_extent.keys()))
+        extent_var = unit.control_volume.rate_reaction_extent[extent_index]
+
+        extent_was_fixed = extent_var.fixed
+        if not extent_was_fixed:
+            inlet_flow = value(unit.inlet.flow_mol[t0])
+            extent_guess = value(extent_var)
+            if abs(extent_guess) < 1e-12:
+                extent_guess = max(1e-4, 0.05 * inlet_flow)
+            extent_var.fix(extent_guess)
+
+        try:
+            local_solver = get_solver(options={"max_iter": 500, "print_level": 0})
+            results = local_solver.solve(unit, tee=False)
+            if print_unit_status:
+                print(
+                    f"[SD-INIT] {unit.name}: reactor fallback solve termination={results.solver.termination_condition}"
+                )
+            return check_optimal_termination(results)
+        finally:
+            if not extent_was_fixed:
+                extent_var.unfix()
+
+    def _attempt_reactor_fallback(unit):
+        if unit is not m.fs.asa_acetylation_reactor_220:
+            return
+        if print_unit_status:
+            print(f"[SD-INIT] {unit.name}: attempting reactor-specific fallback initialization")
+        fallback_ok = _initialize_reactor_with_temporary_extent(unit)
+        if print_unit_status:
+            if fallback_ok:
+                print(f"[SD-INIT] {unit.name}: reactor fallback initialization succeeded")
+            else:
+                print(f"[SD-INIT] {unit.name}: reactor fallback initialization did not reach optimal")
+
     def _initialize_unit(unit):
         if not run_unit_initialization:
             return
+
+        _unfix_all_nonbaseline_port_states()
+
         if isinstance(unit, (Feed, Product, StateJunction)):
+            if print_unit_status:
+                print(f"[SD-INIT] {unit.name}: skipped (boundary/pass-through unit)")
             return
         if unit is m.fs.recycle_splitter_455:
+            if print_unit_status:
+                print(f"[SD-INIT] {unit.name}: skipped (custom recycle splitter handling)")
             return
         if hasattr(unit, "initialize"):
+            local_dof_before = degrees_of_freedom(unit)
+            if local_dof_before < 0:
+                print(
+                    f"[DOF-DIAG] Unit={unit.name} has local_dof={local_dof_before} before initialize()."
+                )
+            if print_unit_status:
+                print(f"[SD-INIT] {unit.name}: initialize(start)")
             try:
-                unit.initialize(outlvl=idaeslog.WARNING, solver="ipopt", hold_state=False)
+                unit.initialize(outlvl=idaeslog.INFO, solver="ipopt", hold_state=False)
                 _unfix_port_states(unit)
+                if print_unit_status:
+                    print(f"[SD-INIT] {unit.name}: initialize(done; see IDAES log for solver termination)")
             except TypeError:
                 try:
-                    unit.initialize(outlvl=idaeslog.WARNING)
+                    unit.initialize(outlvl=idaeslog.INFO)
                     _unfix_port_states(unit)
+                    if print_unit_status:
+                        print(f"[SD-INIT] {unit.name}: initialize(done via fallback signature; see IDAES log for solver termination)")
                 except Exception as err:
                     print(f"Warning: initialization skipped for {unit.name}: {err}")
+                    _diagnose_overfixed(unit)
+                    _attempt_reactor_fallback(unit)
+                    if print_unit_status:
+                        print(f"[SD-INIT] {unit.name}: initialize(failed: {err})")
             except Exception as err:
                 print(f"Warning: initialization skipped for {unit.name}: {err}")
+                _diagnose_overfixed(unit)
+                _attempt_reactor_fallback(unit)
+                if print_unit_status:
+                    print(f"[SD-INIT] {unit.name}: initialize(failed: {err})")
 
     graph = seq.create_graph(m)
+    heuristic_tear_set = seq.tear_set_arcs(graph, method="heuristic")
     order = seq.calculation_order(graph)
+
+    if print_unit_status and not run_unit_initialization:
+        print("[SD-INIT] Unit initialize() calls are disabled (run_unit_initialization=False); running propagation-only SD passes.")
+
+    if display_report:
+        print("Sequential Decomposition tear set:")
+        for arc in heuristic_tear_set:
+            print(f"  - {arc.name}")
+        print("Sequential Decomposition unit order:")
+        for block in order:
+            print(f"  - {block[0].name}")
+
+    if run_unit_initialization:
+        seq.set_tear_set(heuristic_tear_set)
+
+        t0 = m.fs.time.first()
+        if tear_guess_s410mix_410split is None:
+            tear_guess_s410mix_410split = {
+                "flow_mol": {t0: 6.0},
+                "temperature": {t0: 308.15},
+                "pressure": {t0: 101325.0},
+                "mole_frac_comp": {
+                    (t0, "SA"): 0.09,
+                    (t0, "AA"): 0.30,
+                    (t0, "ASA"): 0.40,
+                    (t0, "AcOH"): 0.20,
+                    (t0, "H2SO4"): 0.01,
+                },
+            }
+        if tear_guess_s442_440_reflux is None:
+            tear_guess_s442_440_reflux = {
+                "flow_mol": {t0: 2.0},
+                "temperature": {t0: 305.15},
+                "pressure": {t0: 101325.0},
+                "mole_frac_comp": {
+                    (t0, "SA"): 0.005,
+                    (t0, "AA"): 0.75,
+                    (t0, "ASA"): 0.004,
+                    (t0, "AcOH"): 0.24,
+                    (t0, "H2SO4"): 0.001,
+                },
+            }
+
+        seq.set_guesses_for(
+            m.fs.pusher_centrifuge_splitter_410.inlet,
+            tear_guess_s410mix_410split,
+        )
+        seq.set_guesses_for(
+            m.fs.solvent_recovery_column_feed_mixer_440.reflux_in,
+            tear_guess_s442_440_reflux,
+        )
+        try:
+            seq.run(m, _initialize_unit)
+            _release_temporary_initialization_fixes()
+            return
+        except Exception as err:
+            print(f"Warning: SD run did not complete cleanly ({err}). Falling back to ordered propagation sweeps.")
 
     for _ in range(seq.options.iterLim):
         for blocks in order:
@@ -746,20 +967,41 @@ def initialize_model_sequential(m: ConcreteModel, run_unit_initialization: bool 
                     except TypeError:
                         propagate_state(arc)
 
+    _release_temporary_initialization_fixes()
 
-def solve_model(m: ConcreteModel):
-    solver = get_solver()
+
+def solve_model(m: ConcreteModel, solver_options=None):
+    solver = get_solver(options=solver_options)
     return solver.solve(m, tee=False)
 
 
 if __name__ == "__main__":
+    verbose_init_logs = False
+
     model = build_model()
-    print("Built steady-state unit model scaffold from YAML node set.")
-    print(f"Degrees of freedom: {degrees_of_freedom(model)}")
-    initialize_model_sequential(model)
-    results = solve_model(model)
-    print(f"Solver termination: {results.solver.termination_condition}")
-    print(f"Solver optimal: {check_optimal_termination(results)}")
-    print(f"Final product purity (ASA mole fraction): {value(model.fs.final_product_purity):.6f}")
-    report_recycle_aa_fractions(model)
-    report_operating_costs(model)
+    print("=== Steady-State Demo Run ===")
+    print(f"DOF after build: {degrees_of_freedom(model)}")
+
+    initialize_model_sequential(
+        model,
+        run_unit_initialization=True,
+        display_report=verbose_init_logs,
+        print_unit_status=verbose_init_logs,
+    )
+
+    print(f"DOF before solve: {degrees_of_freedom(model)}")
+    results = solve_model(model, solver_options={"max_iter": 5000, "tol": 1e-6, "acceptable_tol": 1e-5, "print_level": 0})
+    termination = results.solver.termination_condition
+    optimal = check_optimal_termination(results)
+
+    print(f"Solver termination: {termination}")
+    print(f"Solver optimal: {optimal}")
+
+    if optimal:
+        print(f"Final product purity (ASA mole fraction): {value(model.fs.final_product_purity):.6f}")
+        report_recycle_aa_fractions(model)
+        report_operating_costs(model)
+    else:
+        print("Solver did not converge to an optimal solution; KPI values may not be reliable.")
+        report_top_constraint_violations(model)
+    print("hiv1.3")

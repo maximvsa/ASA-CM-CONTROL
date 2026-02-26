@@ -27,8 +27,8 @@ configuration = {
             "concentration_form": ConcentrationForm.moleFraction,
             "parameter_data": {
                 "dh_rxn_ref": (-4.5e4, pyunits.J / pyunits.mol),
-                "arrhenius_const": (1.0, pyunits.mol / pyunits.m**3 / pyunits.s),
-                "energy_activation": (4.0e4, pyunits.J / pyunits.mol),
+                "arrhenius_const": (5.0e4, pyunits.mol / pyunits.m**3 / pyunits.s),
+                "energy_activation": (3.5e4, pyunits.J / pyunits.mol),
             },
         }
     },

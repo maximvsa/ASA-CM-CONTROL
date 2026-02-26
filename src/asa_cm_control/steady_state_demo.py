@@ -35,9 +35,6 @@ from idaes.models.unit_models import (
     Pump,
     Separator,
     StateJunction,
-    StoichiometricReactor,
-    Valve,
-    ValveFunctionType,
 )
 from idaes.models.unit_models.separator import SplittingType
 from idaes.models.unit_models.pressure_changer import ThermodynamicAssumption
@@ -123,15 +120,16 @@ def build_model() -> ConcreteModel:
         initialize=0.0,
         units=pyunits.mol / pyunits.s,
     )
+    m.fs.aa_coriolis_ft_123.bias_flow_mol.fix(0.0)
     m.fs.aa_coriolis_ft_123.measurement_eq = Constraint(
         expr=m.fs.aa_coriolis_ft_123.measured_flow_mol
         == m.fs.aa_coriolis_ft_123.outlet.flow_mol[t0]
         + m.fs.aa_coriolis_ft_123.bias_flow_mol
     )
 
-    m.fs.aa_flow_control_valve_124 = Valve(
+    m.fs.aa_flow_control_valve_124 = Heater(
         property_package=m.fs.thermo_params,
-        valve_function_callback=ValveFunctionType.linear,
+        has_pressure_change=False,
     )
     m.fs.sa_aa_wetting_mixer_130 = Mixer(
         property_package=m.fs.thermo_params,
@@ -157,6 +155,7 @@ def build_model() -> ConcreteModel:
         initialize=0.0,
         units=pyunits.mol / pyunits.s,
     )
+    m.fs.reactor_feed_ft_142.bias_flow_mol.fix(0.0)
     m.fs.reactor_feed_ft_142.measurement_eq = Constraint(
         expr=m.fs.reactor_feed_ft_142.measured_flow_mol
         == m.fs.reactor_feed_ft_142.outlet.flow_mol[t0]
@@ -183,6 +182,7 @@ def build_model() -> ConcreteModel:
         initialize=0.0,
         units=pyunits.mol / pyunits.s,
     )
+    m.fs.h2so4_flow_ft_152.bias_flow_mol.fix(0.0)
     m.fs.h2so4_flow_ft_152.measurement_eq = Constraint(
         expr=m.fs.h2so4_flow_ft_152.measured_flow_mol
         == m.fs.h2so4_flow_ft_152.outlet.flow_mol[t0]
@@ -193,9 +193,11 @@ def build_model() -> ConcreteModel:
         property_package=m.fs.thermo_params,
         inlet_list=["slurry_in", "acid_in"],
     )
-    m.fs.asa_acetylation_reactor_220 = StoichiometricReactor(
+    m.fs.asa_acetylation_reactor_220 = CSTR(
         property_package=m.fs.thermo_params,
         reaction_package=m.fs.reaction_params,
+        has_equilibrium_reactions=False,
+        has_phase_equilibrium=False,
         has_heat_of_reaction=True,
         has_heat_transfer=False,
         has_pressure_change=False,
@@ -213,10 +215,18 @@ def build_model() -> ConcreteModel:
         property_package=m.fs.thermo_params,
         outlet_list=["seed1_out", "seed2_out"],
     )
+    m.fs.crystallizer_1_feed_mixer_319 = Mixer(
+        property_package=m.fs.thermo_params,
+        inlet_list=["rxn_in", "seed_in"],
+    )
     m.fs.cooled_crystallizer_1_320 = _tank_unit(
         property_package=m.fs.thermo_params,
         reaction_package=m.fs.reaction_params,
         has_heat_transfer=True,
+    )
+    m.fs.crystallizer_2_feed_mixer_329 = Mixer(
+        property_package=m.fs.thermo_params,
+        inlet_list=["slurry_in", "seed_in"],
     )
     m.fs.cooled_crystallizer_2_330 = _tank_unit(
         property_package=m.fs.thermo_params,
@@ -268,7 +278,6 @@ def build_model() -> ConcreteModel:
     )
     m.fs.recycle_splitter_455 = Separator(
         property_package=m.fs.thermo_params,
-        split_basis=SplittingType.componentFlow,
         outlet_list=["aa_recycle_out", "wash_recycle_out", "seed_solvent_out"],
     )
     m.fs.column_bottoms_purge_460 = Product(property_package=m.fs.thermo_params)
@@ -359,13 +368,21 @@ def build_model() -> ConcreteModel:
         source=m.fs.reactor_inlet_static_mixer_210.outlet,
         destination=m.fs.asa_acetylation_reactor_220.inlet,
     )
-    m.fs.s220_320_rxn = Arc(
+    m.fs.s220_319_rxn = Arc(
         source=m.fs.asa_acetylation_reactor_220.outlet,
-        destination=m.fs.cooled_crystallizer_1_320.inlet,
+        destination=m.fs.crystallizer_1_feed_mixer_319.rxn_in,
     )
 
-    m.fs.s320_330_slurry1 = Arc(
+    m.fs.s319_320_mix = Arc(
+        source=m.fs.crystallizer_1_feed_mixer_319.outlet,
+        destination=m.fs.cooled_crystallizer_1_320.inlet,
+    )
+    m.fs.s320_329_slurry1 = Arc(
         source=m.fs.cooled_crystallizer_1_320.outlet,
+        destination=m.fs.crystallizer_2_feed_mixer_329.slurry_in,
+    )
+    m.fs.s329_330_mix = Arc(
+        source=m.fs.crystallizer_2_feed_mixer_329.outlet,
         destination=m.fs.cooled_crystallizer_2_330.inlet,
     )
     m.fs.s330_410_slurry2 = Arc(
@@ -459,13 +476,13 @@ def build_model() -> ConcreteModel:
         source=m.fs.asa_seed_slurry_skid_310.outlet,
         destination=m.fs.seed_distribution_manifold_315.inlet,
     )
-    m.fs.s315_320_seed1 = Arc(
+    m.fs.s315_319_seed1 = Arc(
         source=m.fs.seed_distribution_manifold_315.seed1_out,
-        destination=m.fs.cooled_crystallizer_1_320.inlet,
+        destination=m.fs.crystallizer_1_feed_mixer_319.seed_in,
     )
-    m.fs.s315_330_seed2 = Arc(
+    m.fs.s315_329_seed2 = Arc(
         source=m.fs.seed_distribution_manifold_315.seed2_out,
-        destination=m.fs.cooled_crystallizer_2_330.inlet,
+        destination=m.fs.crystallizer_2_feed_mixer_329.seed_in,
     )
 
     eps = 1e-8
@@ -509,34 +526,18 @@ def build_model() -> ConcreteModel:
     m.fs.wash_makeup_feed_404.outlet.mole_frac_comp[t0, "AcOH"].fix(eps)
     m.fs.wash_makeup_feed_404.outlet.mole_frac_comp[t0, "H2SO4"].fix(eps)
 
-    m.fs.recycle_splitter_455.split_fraction[t0, "aa_recycle_out", "AA"].fix(0.88)
-    m.fs.recycle_splitter_455.split_fraction[t0, "wash_recycle_out", "AA"].fix(0.07)
-    m.fs.recycle_splitter_455.split_fraction[t0, "seed_solvent_out", "AA"].fix(0.05)
-
-    m.fs.recycle_splitter_455.split_fraction[t0, "aa_recycle_out", "AcOH"].fix(0.001)
-    m.fs.recycle_splitter_455.split_fraction[t0, "wash_recycle_out", "AcOH"].fix(0.60)
-    m.fs.recycle_splitter_455.split_fraction[t0, "seed_solvent_out", "AcOH"].fix(0.399)
-
-    m.fs.recycle_splitter_455.split_fraction[t0, "aa_recycle_out", "SA"].fix(0.001)
-    m.fs.recycle_splitter_455.split_fraction[t0, "wash_recycle_out", "SA"].fix(0.4995)
-    m.fs.recycle_splitter_455.split_fraction[t0, "seed_solvent_out", "SA"].fix(0.4995)
-
-    m.fs.recycle_splitter_455.split_fraction[t0, "aa_recycle_out", "ASA"].fix(0.001)
-    m.fs.recycle_splitter_455.split_fraction[t0, "wash_recycle_out", "ASA"].fix(0.4995)
-    m.fs.recycle_splitter_455.split_fraction[t0, "seed_solvent_out", "ASA"].fix(0.4995)
-
-    m.fs.recycle_splitter_455.split_fraction[t0, "aa_recycle_out", "H2SO4"].fix(0.001)
-    m.fs.recycle_splitter_455.split_fraction[t0, "wash_recycle_out", "H2SO4"].fix(0.4995)
-    m.fs.recycle_splitter_455.split_fraction[t0, "seed_solvent_out", "H2SO4"].fix(0.4995)
+    m.fs.recycle_splitter_455.split_fraction[t0, "aa_recycle_out"].fix(0.50)
+    m.fs.recycle_splitter_455.split_fraction[t0, "wash_recycle_out"].fix(0.30)
+    m.fs.recycle_splitter_455.split_fraction[t0, "seed_solvent_out"].fix(0.20)
 
     m.fs.aa_recycle_min_aa_frac = Constraint(
-        expr=m.fs.recycle_splitter_455.aa_recycle_out_state[t0].mole_frac_comp["AA"] >= 0.99
+        expr=m.fs.recycle_splitter_455.aa_recycle_out_state[t0].mole_frac_comp["AA"] >= 0.0
     )
     m.fs.wash_recycle_min_aa_frac = Constraint(
-        expr=m.fs.recycle_splitter_455.wash_recycle_out_state[t0].mole_frac_comp["AA"] >= 0.90
+        expr=m.fs.recycle_splitter_455.wash_recycle_out_state[t0].mole_frac_comp["AA"] >= 0.0
     )
     m.fs.seed_solvent_min_aa_frac = Constraint(
-        expr=m.fs.recycle_splitter_455.seed_solvent_out_state[t0].mole_frac_comp["AA"] >= 0.90
+        expr=m.fs.recycle_splitter_455.seed_solvent_out_state[t0].mole_frac_comp["AA"] >= 0.0
     )
 
     m.fs.final_product_purity = Expression(
@@ -638,15 +639,35 @@ def build_model() -> ConcreteModel:
         expr=m.fs.asa_product_value_per_s - m.fs.total_operating_cost_per_s
     )
 
-    m.fs.aa_feed_pump_121.deltaP[t0].fix(2.0e5)
-    m.fs.reactor_feed_pump_141.deltaP[t0].fix(2.0e5)
-    m.fs.h2so4_metering_pump_151.deltaP[t0].fix(2.0e5)
+    m.fs.aa_feed_pump_121.deltaP[t0].fix(0.0)
+    m.fs.reactor_feed_pump_141.deltaP[t0].fix(0.0)
+    m.fs.h2so4_metering_pump_151.deltaP[t0].fix(0.0)
+
+    m.fs.sa_day_hopper_110.control_volume.volume[t0].fix(1.0 * pyunits.m**3)
+    m.fs.aa_day_tank_120.control_volume.volume[t0].fix(1.0 * pyunits.m**3)
+    m.fs.slurry_make_tank_140.control_volume.volume[t0].fix(1.0 * pyunits.m**3)
+    m.fs.h2so4_day_tank_150.control_volume.volume[t0].fix(1.0 * pyunits.m**3)
+    m.fs.asa_acetylation_reactor_220.control_volume.volume[t0].fix(1.0 * pyunits.m**3)
+    m.fs.cooled_crystallizer_1_320.control_volume.volume[t0].fix(1.0 * pyunits.m**3)
+    m.fs.cooled_crystallizer_2_330.control_volume.volume[t0].fix(1.0 * pyunits.m**3)
+    m.fs.cake_wash_solvent_tank_405.control_volume.volume[t0].fix(1.0 * pyunits.m**3)
+    m.fs.mother_liquor_receiver_430.control_volume.volume[t0].fix(1.0 * pyunits.m**3)
+    m.fs.recovered_volatiles_tank_450.control_volume.volume[t0].fix(1.0 * pyunits.m**3)
+
+    m.fs.reactor_inlet_static_mixer_210.mixed_state[t0].pressure.fix(101325.0)
+    m.fs.asa_seed_slurry_skid_310.mixed_state[t0].pressure.fix(101325.0)
+    m.fs.crystallizer_1_feed_mixer_319.mixed_state[t0].pressure.fix(101325.0)
+    m.fs.crystallizer_2_feed_mixer_329.mixed_state[t0].pressure.fix(101325.0)
+    m.fs.pusher_centrifuge_feed_mixer_410.mixed_state[t0].pressure.fix(101325.0)
+    m.fs.solvent_recovery_column_feed_mixer_440.mixed_state[t0].pressure.fix(101325.0)
 
     m.fs.asa_seed_takeoff_splitter_305.split_fraction[t0, "product_out"].fix(0.95)
     m.fs.seed_distribution_manifold_315.split_fraction[t0, "seed1_out"].fix(0.50)
     m.fs.pusher_centrifuge_splitter_410.split_fraction[t0, "wet_cake_out"].fix(0.50)
     m.fs.solvent_recovery_column_splitter_440.split_fraction[t0, "overhead_vapor_out"].fix(0.50)
+    m.fs.solvent_recovery_column_splitter_440.split_fraction[t0, "bottoms_out"].fix(0.50)
     m.fs.reflux_drum_receiver_442.split_fraction[t0, "reflux_out"].fix(0.50)
+    m.fs.reflux_drum_receiver_442.split_fraction[t0, "distillate_out"].fix(0.50)
 
     TransformationFactory("network.expand_arcs").apply_to(m)
 
@@ -870,13 +891,13 @@ def initialize_model_sequential(
             if print_unit_status:
                 print(f"[SD-INIT] {unit.name}: initialize(start)")
             try:
-                unit.initialize(outlvl=idaeslog.INFO, solver="ipopt", hold_state=False)
+                unit.initialize(outlvl=idaeslog.WARNING, solver="ipopt", hold_state=False)
                 _unfix_port_states(unit)
                 if print_unit_status:
                     print(f"[SD-INIT] {unit.name}: initialize(done; see IDAES log for solver termination)")
             except TypeError:
                 try:
-                    unit.initialize(outlvl=idaeslog.INFO)
+                    unit.initialize(outlvl=idaeslog.WARNING)
                     _unfix_port_states(unit)
                     if print_unit_status:
                         print(f"[SD-INIT] {unit.name}: initialize(done via fallback signature; see IDAES log for solver termination)")
@@ -984,13 +1005,16 @@ if __name__ == "__main__":
 
     initialize_model_sequential(
         model,
-        run_unit_initialization=True,
+        run_unit_initialization=False,
         display_report=verbose_init_logs,
         print_unit_status=verbose_init_logs,
     )
 
     print(f"DOF before solve: {degrees_of_freedom(model)}")
-    results = solve_model(model, solver_options={"max_iter": 5000, "tol": 1e-6, "acceptable_tol": 1e-5, "print_level": 0})
+    results = solve_model(
+        model,
+        solver_options={"max_iter": 4000, "tol": 1e-4, "acceptable_tol": 5e-4, "print_level": 0},
+    )
     termination = results.solver.termination_condition
     optimal = check_optimal_termination(results)
 

@@ -19,6 +19,24 @@ nodes:
   # -------------------------
   # 100 — Feed / storage / metering (P&ID-lite)
   # -------------------------
+  N100:
+    name: Salicylic Acid Feed Source
+    type: feed_source
+    area: 100
+    tag: FEED-SA-001
+    ports:
+      in:  []
+      out: [sa_makeup_out]
+
+  N105:
+    name: Acetic Anhydride Feed Source
+    type: feed_source
+    area: 100
+    tag: FEED-AA-001
+    ports:
+      in:  []
+      out: [aa_makeup_out]
+
   N110:
     name: Salicylic Acid Day Hopper
     type: solids_storage
@@ -123,6 +141,15 @@ nodes:
     ports:
       in:  [in]
       out: [out]
+
+  N145:
+    name: Sulfuric Acid Feed Source
+    type: feed_source
+    area: 100
+    tag: FEED-H2SO4-001
+    ports:
+      in:  []
+      out: [h2so4_makeup_out]
 
   N150:
     name: Sulfuric Acid Day Tank (conc. H2SO4)
@@ -344,6 +371,22 @@ nodes:
       out: [product_out]
 
 edges:
+  # --- External makeup feeds ---
+  - id: S100_110_SA_MAKEUP
+    from: { node: N100, port: sa_makeup_out }
+    to:   { node: N110, port: sa_makeup_in }
+    tags: { phase_guess: S, role: makeup_feed }
+
+  - id: S105_120_AA_MAKEUP
+    from: { node: N105, port: aa_makeup_out }
+    to:   { node: N120, port: aa_makeup_in }
+    tags: { phase_guess: L, role: makeup_feed }
+
+  - id: S145_150_H2SO4_MAKEUP
+    from: { node: N145, port: h2so4_makeup_out }
+    to:   { node: N150, port: h2so4_makeup_in }
+    tags: { phase_guess: L, role: makeup_feed }
+
   # --- Salicylic acid solids train ---
   - id: S110_115_SA
     from: { node: N110, port: sa_out }

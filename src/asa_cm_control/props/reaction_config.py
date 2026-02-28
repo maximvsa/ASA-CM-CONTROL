@@ -13,13 +13,14 @@ configuration = {
         "temperature": pyunits.K,
     },
     "rate_reactions": {
-        "R_as_to_asa": {
+        "R_sa_to_asa": {
             "stoichiometry": {
-                ("Liq", "SA"): -1,
-                ("Liq", "AA"): -1,
-                ("Liq", "ASA"): 1,
-                ("Liq", "AcOH"): 1,
-                ("Liq", "H2SO4"): 0,
+                ("Liq", "salicylic_acid"): -1,
+                ("Liq", "acetic_anhydride"): -1,
+                ("Liq", "aspirin"): 1,
+                ("Liq", "acetic_acid"): 1,
+                ("Liq", "sulfuric_acid"): 0,
+                ("Liq", "water"): 0,
             },
             "heat_of_reaction": constant_dh_rxn,
             "rate_constant": arrhenius,

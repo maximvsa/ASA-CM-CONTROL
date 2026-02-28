@@ -1,4 +1,3 @@
-# src/asa_cm_control/props/thermo_config.py
 from pyomo.environ import units as pyunits
 from idaes.core import Component, LiquidPhase
 from idaes.models.properties.modular_properties.base.generic_property import StateIndex
@@ -7,8 +6,15 @@ from idaes.models.properties.modular_properties.eos.ideal import Ideal
 from idaes.models.properties.modular_properties.pure.ConstantProperties import Constant
 
 configuration = {
+    "base_units": {
+        "time": pyunits.s,
+        "length": pyunits.m,
+        "mass": pyunits.kg,
+        "amount": pyunits.mol,
+        "temperature": pyunits.K,
+    },
     "components": {
-        "SA": {
+        "salicylic_acid": {
             "type": Component,
             "cp_mol_liq_comp": Constant.cp_mol_liq_comp,
             "enth_mol_liq_comp": Constant.enth_mol_liq_comp,
@@ -19,7 +25,7 @@ configuration = {
                 "dens_mol_liq_comp_coeff": (6500.0, pyunits.mol / pyunits.m**3),
             },
         },
-        "AA": {
+        "acetic_anhydride": {
             "type": Component,
             "cp_mol_liq_comp": Constant.cp_mol_liq_comp,
             "enth_mol_liq_comp": Constant.enth_mol_liq_comp,
@@ -30,7 +36,7 @@ configuration = {
                 "dens_mol_liq_comp_coeff": (10600.0, pyunits.mol / pyunits.m**3),
             },
         },
-        "ASA": {
+        "aspirin": {
             "type": Component,
             "cp_mol_liq_comp": Constant.cp_mol_liq_comp,
             "enth_mol_liq_comp": Constant.enth_mol_liq_comp,
@@ -41,7 +47,7 @@ configuration = {
                 "dens_mol_liq_comp_coeff": (6700.0, pyunits.mol / pyunits.m**3),
             },
         },
-        "AcOH": {
+        "acetic_acid": {
             "type": Component,
             "cp_mol_liq_comp": Constant.cp_mol_liq_comp,
             "enth_mol_liq_comp": Constant.enth_mol_liq_comp,
@@ -52,7 +58,7 @@ configuration = {
                 "dens_mol_liq_comp_coeff": (17500.0, pyunits.mol / pyunits.m**3),
             },
         },
-        "H2SO4": {
+        "sulfuric_acid": {
             "type": Component,
             "cp_mol_liq_comp": Constant.cp_mol_liq_comp,
             "enth_mol_liq_comp": Constant.enth_mol_liq_comp,
@@ -63,6 +69,17 @@ configuration = {
                 "dens_mol_liq_comp_coeff": (18800.0, pyunits.mol / pyunits.m**3),
             },
         },
+        "water": {
+            "type": Component,
+            "cp_mol_liq_comp": Constant.cp_mol_liq_comp,
+            "enth_mol_liq_comp": Constant.enth_mol_liq_comp,
+            "dens_mol_liq_comp": Constant.dens_mol_liq_comp,
+            "parameter_data": {
+                "mw": (0.01801528, pyunits.kg / pyunits.mol),
+                "cp_mol_liq_comp_coeff": (75.3, pyunits.J / pyunits.mol / pyunits.K),
+                "dens_mol_liq_comp_coeff": (55500.0, pyunits.mol / pyunits.m**3),
+            },
+        },
     },
     "phases": {
         "Liq": {"type": LiquidPhase, "equation_of_state": Ideal},
@@ -70,18 +87,11 @@ configuration = {
     "state_definition": FTPx,
     "include_enthalpy_of_formation": False,
     "state_bounds": {
-        "flow_mol": (0, 10, 100, pyunits.mol/pyunits.s),
+        "flow_mol": (0, 10, 100, pyunits.mol / pyunits.s),
         "temperature": (250, 298.15, 500, pyunits.K),
         "pressure": (1e4, 101325, 1e6, pyunits.Pa),
     },
     "pressure_ref": (101325, pyunits.Pa),
     "temperature_ref": (298.15, pyunits.K),
-    "base_units": {
-        "time": pyunits.s,
-        "length": pyunits.m,
-        "mass": pyunits.kg,
-        "amount": pyunits.mol,
-        "temperature": pyunits.K,
-    },
     "state_components": StateIndex.true,
 }

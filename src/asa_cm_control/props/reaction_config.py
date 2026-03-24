@@ -15,12 +15,12 @@ configuration = {
     "rate_reactions": {
         "R_sa_to_asa": {
             "stoichiometry": {
-                ("Liq", "salicylic_acid"): -1,
-                ("Liq", "acetic_anhydride"): -1,
-                ("Liq", "aspirin"): 1,
-                ("Liq", "acetic_acid"): 1,
-                ("Liq", "sulfuric_acid"): 0,
-                ("Liq", "water"): 0,
+                ("liquid", "salicylic_acid"): -1,
+                ("liquid", "acetic_anhydride"): -1,
+                ("liquid", "aspirin"): 1,
+                ("liquid", "acetic_acid"): 1,
+                ("liquid", "sulfuric_acid"): 0,
+                ("liquid", "water"): 0,
             },
             "heat_of_reaction": constant_dh_rxn,
             "rate_constant": arrhenius,

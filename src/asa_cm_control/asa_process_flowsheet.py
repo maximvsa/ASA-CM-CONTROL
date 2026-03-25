@@ -2,11 +2,19 @@
 # - properly implement updated thermo package and reaction property package
 # - add crystallizer unit model and test with same property package
 
-"""First-pass ASA process flowsheet runner.
+"""First-pass ASA process flowsheet model assembly and solve workflow.
 
-This script currently builds and solves a single reactive CSTR case using the
-custom thermophysical and reaction packages. The function hierarchy is laid out
-to support extension into a larger flowsheet as additional units are added.
+This module defines reusable functions to build, initialize, solve, and report
+the ASA CSTR flowsheet using the custom thermophysical and reaction packages.
+
+Intended entry point:
+    run_asa_process.py (repository root)
+
+Run from repository root:
+    python run_asa_process.py
+
+The module is intentionally importable and does not provide a direct
+``if __name__ == "__main__"`` execution block.
 """
 
 from pyomo.environ import ConcreteModel, SolverFactory
@@ -72,6 +80,10 @@ def report_results(model):
 
 
 def main():
+    """Execute the end-to-end flowsheet workflow.
+
+    This function is invoked by the root launcher script ``run_asa_process.py``.
+    """
     model = build_flowsheet()
     set_operating_conditions(model)
     initialize_model(model)

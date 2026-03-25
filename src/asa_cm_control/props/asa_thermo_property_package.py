@@ -23,10 +23,8 @@ from idaes.core import (
     EnergyBalanceType,
 )
 from pyomo.environ import Var, Expression, Constraint, NonNegativeReals, units as pyunits
-from idaes.core.base.phases import PhaseType
 from idaes.core.util.initialization import fix_state_vars, revert_state_vars
 from idaes.core.util.exceptions import ConfigurationError
-import idaes.core.util.scaling as iscale
 import idaes.logger as idaeslog
 
 
@@ -173,7 +171,7 @@ class ThermoParameterData(PhysicalParameterBlock):
         
         self.density_sol_comp.fix()
         
-        # STANDARD ENTHALPY OF FORMATION (kJ/mol)
+        # STANDARD ENTHALPY OF FORMATION (J/mol)
         self.dh_form_liq_comp = Var(
             self.component_list,
             initialize={

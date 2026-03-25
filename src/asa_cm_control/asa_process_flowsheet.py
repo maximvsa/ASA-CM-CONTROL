@@ -27,7 +27,7 @@ from idaes.models.unit_models import CSTR
 from idaes.core.util.model_statistics import degrees_of_freedom
 import idaes.logger as idaeslog
 
-from asa_cm_control.props.reaction_config import configuration as reaction_config
+## from asa_cm_control.props.reaction_config import configuration as reaction_config
 
 
 def build_flowsheet():
@@ -35,10 +35,10 @@ def build_flowsheet():
     model.fs = FlowsheetBlock(dynamic=False)
     
     model.fs.thermo_params = ThermoParameterBlock()
-    model.fs.reaction_params = GenericReactionParameterBlock(
-        property_package=model.fs.thermo_params,
-        **reaction_config,
-    )
+##    model.fs.reaction_params = GenericReactionParameterBlock(
+##        property_package=model.fs.thermo_params,
+##        **reaction_config,
+##    )
     
     model.fs.cstr = CSTR(
         property_package=model.fs.thermo_params,

@@ -1,3 +1,11 @@
+# To-Do:
+# - Add latex to the doc strings of any mathematically-oriented functions
+
+
+
+
+
+
 """Custom liquid-focused thermophysical package for first-pass ASA synthesis modeling.
 
 This module defines a manual IDAES property package with:
@@ -187,6 +195,16 @@ class ThermoParameterData(PhysicalParameterBlock):
         )
         
         self.dh_form_liq_comp.fix()
+
+        self.act_coeff_liq_comp = Var(
+            self.component_list,
+            initialize=1.0,
+            bounds=(1e-12, None),
+            units=pyunits.dimensionless,
+            doc="Liquid-phase activity coefficient by component (ideal default = 1)",
+        )
+
+        self.act_coeff_liq_comp.fix()
 
     @classmethod
     def define_metadata(cls, obj):

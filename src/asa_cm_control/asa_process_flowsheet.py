@@ -1,6 +1,6 @@
 # To-Do:
-# - properly implement updated thermo package and reaction property package
-# - add crystallizer unit model and test with same property package
+# - Properly implement updated thermo package and reaction property package
+# - Add crystallizer unit model and test with same property package
 
 """First-pass ASA process flowsheet model assembly and solve workflow.
 

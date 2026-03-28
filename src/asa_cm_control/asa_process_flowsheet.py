@@ -1,5 +1,5 @@
 # To-Do:
-# - Properly implement updated thermo package and reaction property package
+# - Properly implement updated thermo package and reaction property package // Done
 # - Add crystallizer unit model and test with same property package
 
 """First-pass ASA process flowsheet model assembly and solve workflow.
@@ -43,20 +43,20 @@ def build_flowsheet():
 
 
 def set_operating_conditions(model):
-    model.fs.cstr.inlet.flow_mol.fix(1.0)
-    model.fs.cstr.inlet.temperature.fix(325)
+    model.fs.cstr.inlet.flow_mol.fix(0.5)
+    model.fs.cstr.inlet.temperature.fix(325.0)
     model.fs.cstr.inlet.pressure.fix(101325)
     
     epsilon = 1e-8
-    major = 1 - 3 * epsilon
-    model.fs.cstr.inlet.mole_frac_comp[0, "salicylic_acid"].fix(0.495 * major)
-    model.fs.cstr.inlet.mole_frac_comp[0, "acetic_anhydride"].fix(0.495 * major)
+    major = 1 - 2 * epsilon
+    model.fs.cstr.inlet.mole_frac_comp[0, "salicylic_acid"].fix(0.19 * major)
+    model.fs.cstr.inlet.mole_frac_comp[0, "acetic_anhydride"].fix(0.78 * major)
     model.fs.cstr.inlet.mole_frac_comp[0, "sulfuric_acid"].fix(0.01 * major)
     model.fs.cstr.inlet.mole_frac_comp[0, "aspirin"].fix(epsilon)
     model.fs.cstr.inlet.mole_frac_comp[0, "acetic_acid"].fix(epsilon)
-    model.fs.cstr.inlet.mole_frac_comp[0, "water"].fix(epsilon)
+    model.fs.cstr.inlet.mole_frac_comp[0, "water"].fix(0.02 * major)
     
-    model.fs.cstr.volume.fix(10.0)
+    model.fs.cstr.volume.fix(1)
 
 
 def initialize_model(model):

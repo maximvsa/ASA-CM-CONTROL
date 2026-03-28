@@ -291,6 +291,10 @@ class ThermoStateBlockMethods(StateBlock):
         # Release state vars if we fixed them here
         if not state_vars_fixed:
             revert_state_vars(self, flags)
+        
+        _ = solver
+        _ = optarg
+        
         return None
     
     

@@ -312,6 +312,9 @@ class ASAReactionBlockData(ReactionBlockDataBase):
                 
                 return (k0 + kcat * a_hplus ** params.m_2) * a_aa ** params.alpha_2 * a_h2o ** params.beta_2
             
-            return 0 * pyunits.mol / pyunits.m**3 / pyunits.s
+            raise ConfigurationError(
+                f"Unknown reaction '{reaction}' encountered in "
+                f"ASAReactionBlockData._reaction_rate for block {self.name}."
+            )
         
         self.reaction_rate = Expression(params.rate_reaction_idx, rule=reaction_rule)

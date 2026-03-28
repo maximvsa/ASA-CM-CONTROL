@@ -13,6 +13,7 @@ from idaes.core import (
     ReactionBlockBase,
     ReactionBlockDataBase,
     MaterialFlowBasis,
+    ReactionBlockData
 )
 from pyomo.environ import (
     Var,
@@ -94,6 +95,9 @@ class ASAReactionParameterData(ReactionParameterBlock):
             ("r2_acetic_anhydride_hydrolysis", "solid", "acetic_acid"): 0,
             ("r2_acetic_anhydride_hydrolysis", "solid", "water"): 0,
         }
+        
+        # EMPTY FOR NOW, WILL FILL IN IF EQUILIBRIUM REACTIONS ARE EVER USED
+        self.equilibrium_reaction_stoichiometry = {}
         
         reaction_rate_units = pyunits.mol / pyunits.m**3 / pyunits.s
         
@@ -251,3 +255,63 @@ class ASAReactionParameterData(ReactionParameterBlock):
 
 # REACTION BLOCK CLASSES
 
+class ASAReactionBlockMethods(ReactionBlockBase):
+    
+    def initialize(
+        self,
+        state_vars_fixed=False,
+        outlvl=idaeslog.NOTSET,
+        solver=None,
+        optarg=None,
+    ):
+        init_log = idaeslog.getInitLogger(self.name, outlvl, tag="reactions")
+        init_log.info("Reaction initialization complete (no solve required).")
+        
+        _ = state_vars_fixed
+        _ = solver
+        _ = optarg
+        
+        return None
+
+@declare_process_block_class("ASAReactionBlock", block_class=ASAReactionBlockMethods)
+class ASAReactionBlockData(ReactionBlockDataBase):
+    
+    def build(self):
+        
+        super().build()
+    
+    def get_reaction_rate_basis(self):
+        return MaterialFlowBasis.molar
+    
+    def _reaction_rate(self):
+        
+        state = self.state_ref
+        params = self.params
+        gamma = params._property_package.act_coeff_liq_comp
+        eps = 1e-12
+        R = 8.314462618 * pyunits.J / pyunits.mol / pyunits.K
+        
+        a_hplus = gamma["sulfuric_acid"] * state.mole_frac_comp["sulfuric_acid"] + eps
+        a_sa = gamma["salicylic_acid"] * state.mole_frac_comp["salicylic_acid"] + eps
+        a_aa = gamma["acetic_anhydride"] * state.mole_frac_comp["acetic_anhydride"] + eps
+        a_h2o = gamma["water"] * state.mole_frac_comp["water"] + eps
+        
+        def reaction_rule(b, reaction):
+            
+            if reaction == "r1_aspirin_synthesis":
+                
+                k0 = params.A0_1 * exp(-params.Ea0_1 / (R * state.temperature))
+                kcat = params.Acat_1 * exp(-params.Ea_cat_1 / (R * state.temperature))
+                
+                return (k0 + kcat * a_hplus ** params.m_1) * a_sa ** params.alpha_1 * a_aa ** params.beta_1
+            
+            if reaction == "r2_acetic_anhydride_hydrolysis":
+                
+                k0 = params.A0_2 * exp(-params.Ea0_2 / (R * state.temperature))
+                kcat = params.Acat_2 * exp(-params.Ea_cat_2 / (R * state.temperature))
+                
+                return (k0 + kcat * a_hplus ** params.m_2) * a_aa ** params.alpha_2 * a_h2o ** params.beta_2
+            
+            return 0 * pyunits.mol / pyunits.m**3 / pyunits.s
+        
+        self.reaction_rate = Expression(params.rate_reaction_idx, rule=reaction_rule)

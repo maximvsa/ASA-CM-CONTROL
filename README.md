@@ -1,8 +1,7 @@
 # ASA-CM-CONTROL
 
 Personal Project To-do:
-- Try to implement the "latest version" of IDAES
-- Better fit kinetic data in ASAReactionParameterData
+- Better fit kinetic data in ASAReactionParameterData // Done
 - Complete all to-do lists in the top of each file in src/asa_cm_control
 - Write a unit model residence time script/spec/something
 - Implement non-ideal rate law activity terms (NRTL or something)

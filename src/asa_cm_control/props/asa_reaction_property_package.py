@@ -1,8 +1,4 @@
 # To-Do:
-# - Get the reaction package filled out to the style of the thermo package (differing where it matters)
-# - Make sure everything listed in the bullet list below The Reaction Parameter Block section of the documentation gets put in the class
-# - Replace placeholder values in global reaction parameters with actual estimates
-# - Fill in the doc strings on the global parameters declared in the ReactionParameterBlock class
 # - Load the script up with doc strings for each class and function
 
 
@@ -105,8 +101,8 @@ class ASAReactionParameterData(ReactionParameterBlock):
         # PARAMETER SET FOR REACTION 1
         
         self.A0_1 = Var(
-            initialize=1e5,
-            domain=PositiveReals,
+            initialize=0.0,
+            domain=NonNegativeReals,
             units=reaction_rate_units,
             doc="",
         )
@@ -114,7 +110,7 @@ class ASAReactionParameterData(ReactionParameterBlock):
         self.A0_1.fix()
         
         self.Ea0_1 = Var(
-            initialize=5e4,
+            initialize=0.0,
             domain=NonNegativeReals,
             units=pyunits.J/pyunits.mol,
             doc="",
@@ -123,8 +119,8 @@ class ASAReactionParameterData(ReactionParameterBlock):
         self.Ea0_1.fix()
         
         self.Acat_1 = Var(
-            initialize=1e5,
-            domain=PositiveReals,
+            initialize=1.1e12,
+            domain=NonNegativeReals,
             units=reaction_rate_units,
             doc="",
         )
@@ -132,7 +128,7 @@ class ASAReactionParameterData(ReactionParameterBlock):
         self.Acat_1.fix()
         
         self.Ea_cat_1 = Var(
-            initialize=5e4,
+            initialize=6.44e4,
             domain=NonNegativeReals,
             units=pyunits.J/pyunits.mol,
             doc="",
@@ -141,7 +137,7 @@ class ASAReactionParameterData(ReactionParameterBlock):
         self.Ea_cat_1.fix()
         
         self.m_1 = Var(
-            initialize=1.0,
+            initialize=0.0,
             domain=NonNegativeReals,
             units=pyunits.dimensionless,
             doc="",
@@ -171,8 +167,8 @@ class ASAReactionParameterData(ReactionParameterBlock):
         # PARAMETER SET FOR REACTION 2
         
         self.A0_2 = Var(
-            initialize=1e5,
-            domain=PositiveReals,
+            initialize=1.5e9,
+            domain=NonNegativeReals,
             units=reaction_rate_units,
             doc="",
         )
@@ -180,7 +176,7 @@ class ASAReactionParameterData(ReactionParameterBlock):
         self.A0_2.fix()
         
         self.Ea0_2 = Var(
-            initialize=5e4,
+            initialize=5.01e4,
             domain=NonNegativeReals,
             units=pyunits.J/pyunits.mol,
             doc="",
@@ -189,8 +185,8 @@ class ASAReactionParameterData(ReactionParameterBlock):
         self.Ea0_2.fix()
         
         self.Acat_2 = Var(
-            initialize=1e5,
-            domain=PositiveReals,
+            initialize=1.0e13,
+            domain=NonNegativeReals,
             units=reaction_rate_units,
             doc="",
         )
@@ -198,7 +194,7 @@ class ASAReactionParameterData(ReactionParameterBlock):
         self.Acat_2.fix()
         
         self.Ea_cat_2 = Var(
-            initialize=5e4,
+            initialize=5.78e4,
             domain=NonNegativeReals,
             units=pyunits.J/pyunits.mol,
             doc="",

@@ -13,7 +13,6 @@ from idaes.core import (
     ReactionBlockBase,
     ReactionBlockDataBase,
     MaterialFlowBasis,
-    ReactionBlockData
 )
 from pyomo.environ import (
     Var,
@@ -43,7 +42,8 @@ class ASAReactionParameterData(ReactionParameterBlock):
         self._reaction_block_class = ASAReactionBlock
         
         property_package = self.config.property_package
-        self._property_package = property_package
+        if property_package is None:
+            raise ConfigurationError("ASAReactionParameterBlock requires property_package.")
         
         self.rate_reaction_idx = Set(initialize=[
             "r1_aspirin_synthesis",
@@ -287,7 +287,7 @@ class ASAReactionBlockData(ReactionBlockDataBase):
         
         state = self.state_ref
         params = self.params
-        gamma = params._property_package.act_coeff_liq_comp
+        gamma = params.config.property_package.act_coeff_liq_comp
         eps = 1e-12
         R = 8.314462618 * pyunits.J / pyunits.mol / pyunits.K
         

@@ -20,25 +20,19 @@ The module is intentionally importable and does not provide a direct
 from pyomo.environ import ConcreteModel, SolverFactory
 from idaes.core import FlowsheetBlock
 from asa_cm_control.props.asa_thermo_property_package import ThermoParameterBlock
-from idaes.models.properties.modular_properties.base.generic_reaction import (
-    GenericReactionParameterBlock,
-)
+from asa_cm_control.props.asa_reaction_property_package import ASAReactionParameterBlock
 from idaes.models.unit_models import CSTR
 from idaes.core.util.model_statistics import degrees_of_freedom
 import idaes.logger as idaeslog
-
-## from asa_cm_control.props.reaction_config import configuration as reaction_config
-
 
 def build_flowsheet():
     model = ConcreteModel()
     model.fs = FlowsheetBlock(dynamic=False)
     
     model.fs.thermo_params = ThermoParameterBlock()
-##    model.fs.reaction_params = GenericReactionParameterBlock(
-##        property_package=model.fs.thermo_params,
-##        **reaction_config,
-##    )
+    model.fs.reaction_params = ASAReactionParameterBlock(
+        property_package=model.fs.thermo_params,
+    )
     
     model.fs.cstr = CSTR(
         property_package=model.fs.thermo_params,

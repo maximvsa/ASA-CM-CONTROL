@@ -5,6 +5,7 @@ Personal Project To-do:
 - Add NRTL to gamma in thermophysical property package
 - Add reaction 3 to reaction property package
 - Implement a rigorous electrolyte route for reactions to solve for \gamma_{H+} and stuff
+- Add liquid-vapor equilibrium support to thermophysical property package
 - Add crystallization to thermophysical property package
 - Write a unit model residence time script/spec/something
 - Study how the code in run_asa_process.py actually works

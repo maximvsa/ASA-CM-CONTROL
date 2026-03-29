@@ -12,5 +12,6 @@ Personal Project To-do:
 - See if we can get "number of iterations" to increase ... for some reason
 - Rewrite environment.yaml to be minimal yet fully functional
 - Write a sanity check test script in tests folder using the pytest framework
+- Try to implement molecular decomposition physics at high temperatures
 - Write a proper README once the project is more mature
 - Try to integrate the PETSC4PY into the project

@@ -283,7 +283,7 @@ class ASAReactionBlockData(ReactionBlockDataBase):
         
         state = self.state_ref
         params = self.params
-        gamma = params.config.property_package.act_coeff_liq_comp
+        gamma = state.act_coeff_liq_comp
         eps = 1e-12
         R = 8.314462618 * pyunits.J / pyunits.mol / pyunits.K
         

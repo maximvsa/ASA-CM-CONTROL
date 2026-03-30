@@ -37,7 +37,7 @@ from pyomo.environ import (Var,
     units as pyunits,
     Reals,
     Set,
-    Exp,
+    Expression,
     exp,
 )
 from idaes.core.util.initialization import fix_state_vars, revert_state_vars
@@ -334,7 +334,6 @@ class ThermoParameterData(PhysicalParameterBlock):
                 'mole_frac_phase_comp': {'method': '_mole_frac_phase_comp'},
                 'phase_frac': {'method': '_phase_frac'},
                 
-                'ln_act_coeff_liq_comp': {'method': '_ln_act_coeff_liq_comp'},
                 'act_coeff_liq_comp': {'method': '_act_coeff_liq_comp'},
             }
         )
@@ -744,34 +743,87 @@ class ThermoStateBlockData(StateBlockData):
         )
     
     
-    def _ln_act_coeff_liq_comp(self):
-        
-        def ln_act_coeff_liq_comp_rule(b, phase, component):
-            
-            def G_nrtl(component_i, component_j):
-                return exp(-1 * self.alpha_nrtl[component_i, component_j] * self.tau_nrtl[component_i, component_j])
-            
-            def S_nrtl(component_i):
-                return sum(self.mole_frac_comp[k] * G_nrtl(k, component_i) for k in self.component_list)
-            
-            def N_nrtl(component_i):
-                return sum(self.mole_frac_comp[j] * self.tau_nrtl[j, component_i] * G_nrtl(j, component_i) for j in self.component_list)
-            
-            def term1_nrtl(component_i):
-                return N_nrtl(component_i) / S_nrtl(component_i)
-            
-            def Q_nrtl(component_j):
-                return sum(self.mole_frac_comp[k] * G_nrtl(k, component_j) for k in self.component_list)
-            
-            def 
-            
-        
-        self.ln_act_coeff_liq_comp = Expression(
-            self.component_list,
-            rule=ln_act_coeff_liq_comp_rule,
-            doc=""
-        )
-    
-    
     def _act_coeff_liq_comp(self):
-        pass
+        eps = 1e-12
+        
+        self.G_nrtl = Expression(
+            self.component_list,
+            self.component_list,
+            rule=lambda b, i, j: exp(
+                -b.params.alpha_nrtl[i, j] * b.params.tau_nrtl[i, j]
+            ),
+            doc="NRTL G_ij = exp(-alpha_ij * tau_ij)",
+        )
+        
+        self.S_nrtl = Expression(
+            self.component_list,
+            rule=lambda b, i: sum(
+                b.mole_frac_comp[k] * b.G_nrtl[k, i]
+                for k in b.component_list
+            ) + eps,
+            doc="NRTL S_i = sum_k x_k G_ki",
+        )
+        
+        self.N_nrtl = Expression(
+            self.component_list,
+            rule=lambda b, i: sum(
+                b.mole_frac_comp[j]
+                * b.params.tau_nrtl[j, i]
+                * b.G_nrtl[j, i]
+                for j in b.component_list
+            ),
+            doc="NRTL N_i = sum_j x_j tau_ji G_ji",
+        )
+        
+        self.Q_nrtl = Expression(
+            self.component_list,
+            rule=lambda b, j: sum(
+                b.mole_frac_comp[k] * b.G_nrtl[k, j]
+                for k in b.component_list
+            ) + eps,
+            doc="NRTL Q_j = sum_k x_k G_kj",
+        )
+        
+        self.P_nrtl = Expression(
+            self.component_list,
+            rule=lambda b, j: sum(
+                b.mole_frac_comp[m]
+                * b.params.tau_nrtl[m, j]
+                * b.G_nrtl[m, j]
+                for m in b.component_list
+            ),
+            doc="NRTL P_j = sum_m x_m tau_mj G_mj",
+        )
+        
+        self.W_nrtl = Expression(
+            self.component_list,
+            self.component_list,
+            rule=lambda b, i, j: (
+                b.mole_frac_comp[j] * b.G_nrtl[i, j] / b.Q_nrtl[j]
+            ),
+            doc="NRTL W_ij = x_j G_ij / Q_j",
+        )
+        
+        self.D_nrtl = Expression(
+            self.component_list,
+            self.component_list,
+            rule=lambda b, i, j: (
+                b.params.tau_nrtl[i, j] - b.P_nrtl[j] / b.Q_nrtl[j]
+            ),
+            doc="NRTL D_ij = tau_ij - P_j/Q_j",
+        )
+        
+        self.log_gamma_liq_comp = Expression(
+            self.component_list,
+            rule=lambda b, i: (
+                b.N_nrtl[i] / b.S_nrtl[i]
+                + sum(b.W_nrtl[i, j] * b.D_nrtl[i, j] for j in b.component_list)
+            ),
+            doc="NRTL ln(gamma_i)",
+        )
+        
+        self.act_coeff_liq_comp = Expression(
+            self.component_list,
+            rule=lambda b, i: exp(b.log_gamma_liq_comp[i]),
+            doc="Liquid activity coefficient gamma_i from NRTL",
+        )

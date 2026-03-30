@@ -1,7 +1,16 @@
 # To-Do:
-# - Load the script up with doc strings for each class and function
+# - 
 
 
+"""Custom reaction property package for ASA synthesis kinetics.
+
+This module defines an IDAES reaction package with:
+- A reaction parameter block containing stoichiometry and fixed kinetic constants.
+- A reaction state block that builds reaction-rate expressions on demand.
+
+Current scope is liquid-phase kinetics for aspirin synthesis and acetic
+anhydride hydrolysis.
+"""
 
 from idaes.core import (
     declare_process_block_class,
@@ -31,8 +40,22 @@ import idaes.logger as idaeslog
 
 @declare_process_block_class("ASAReactionParameterBlock")
 class ASAReactionParameterData(ReactionParameterBlock):
+    """Reaction parameter block for ASA process chemistry.
+
+    The block stores reaction indices, stoichiometric maps, and fixed kinetic
+    parameters used by associated reaction state blocks.
+    """
 
     def build(self):
+        """Construct reaction sets, stoichiometry, and kinetic parameters.
+
+        Defines two liquid-phase rate reactions:
+        - r1_aspirin_synthesis
+        - r2_acetic_anhydride_hydrolysis
+
+        Kinetic constants are stored as fixed Vars for straightforward
+        calibration updates and reproducible simulation behavior.
+        """
         
         super().build()
         self._reaction_block_class = ASAReactionBlock
@@ -231,6 +254,12 @@ class ASAReactionParameterData(ReactionParameterBlock):
 
     @classmethod
     def define_metadata(cls, obj):
+        """Declare supported reaction properties and default units.
+
+        Args:
+            cls: Reaction parameter block class reference.
+            obj: IDAES metadata object to populate.
+        """
         
         obj.add_properties(
             {
@@ -252,6 +281,7 @@ class ASAReactionParameterData(ReactionParameterBlock):
 # REACTION BLOCK CLASSES
 
 class ASAReactionBlockMethods(ReactionBlockBase):
+    """Mixin methods attached to the generated ASAReactionBlock class."""
     
     def initialize(
         self,
@@ -260,6 +290,17 @@ class ASAReactionBlockMethods(ReactionBlockBase):
         solver=None,
         optarg=None,
     ):
+        """Initialize reaction block data and log completion.
+
+        Args:
+            state_vars_fixed: Placeholder for API compatibility.
+            outlvl: IDAES logging level.
+            solver: Placeholder for API compatibility.
+            optarg: Placeholder for API compatibility.
+
+        Returns:
+            None
+        """
         init_log = idaeslog.getInitLogger(self.name, outlvl, tag="reactions")
         init_log.info("Reaction initialization complete (no solve required).")
         
@@ -271,15 +312,37 @@ class ASAReactionBlockMethods(ReactionBlockBase):
 
 @declare_process_block_class("ASAReactionBlock", block_class=ASAReactionBlockMethods)
 class ASAReactionBlockData(ReactionBlockDataBase):
+    """Reaction state block data class for ASA reaction-rate calculations."""
     
     def build(self):
+        """Construct the reaction block data object."""
         
         super().build()
     
     def get_reaction_rate_basis(self):
+        """Return the reaction-rate basis.
+
+        Returns:
+            MaterialFlowBasis: MaterialFlowBasis.molar.
+        """
         return MaterialFlowBasis.molar
     
     def _reaction_rate(self):
+        """Build reaction-rate expressions for the configured rate reactions.
+
+        Activity approximation:
+            a_i = gamma_i x_i
+
+        Arrhenius terms:
+            k_0 = A_0 exp(-E_{a,0} / (R T))
+            k_cat = A_cat exp(-E_{a,cat} / (R T))
+
+        Rate forms:
+            r_1 = (k_0 + k_cat a_H+^{m_1}) a_SA^{alpha_1} a_AA^{beta_1}
+            r_2 = (k_0 + k_cat a_H+^{m_2}) a_AA^{alpha_2} a_H2O^{beta_2}
+
+        where SA is salicylic acid and AA is acetic anhydride.
+        """
         
         state = self.state_ref
         params = self.params

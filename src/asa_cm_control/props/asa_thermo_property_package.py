@@ -1,9 +1,5 @@
 # To-Do:
-# - Add latex to the doc strings of any mathematically-oriented functions
-
-
-
-
+# - 
 
 
 """Custom liquid-focused thermophysical package for first-pass ASA synthesis modeling.
@@ -37,7 +33,6 @@ from pyomo.environ import (Var,
     units as pyunits,
     Reals,
     Set,
-    Expression,
     exp,
 )
 from idaes.core.util.initialization import fix_state_vars, revert_state_vars
@@ -548,6 +543,10 @@ class ThermoStateBlockData(StateBlockData):
         Returns:
             Expression-like term: Component molar density in liquid phase and
             zero for non-liquid phases.
+
+        LaTeX form (liquid phase):
+            c_i = x_i \\rho_mix / \\overline{MW}
+            \\overline{MW} = \\sum_k x_k MW_k
         """
         if phase != "liquid":
             return 0 * pyunits.mol / pyunits.m**3
@@ -582,6 +581,10 @@ class ThermoStateBlockData(StateBlockData):
         Returns:
             Expression-like term: Approximate liquid internal-energy density and
             zero for non-liquid phases.
+
+        LaTeX form:
+            h = u + pv
+            u_density = c_mol h - p
         """
         
         if phase == "liquid":
@@ -641,6 +644,9 @@ class ThermoStateBlockData(StateBlockData):
 
         The expression combines standard liquid formation enthalpy at reference
         temperature with constant liquid heat-capacity correction.
+
+        LaTeX form:
+            h = \\sum_i x_i \\left(\\Delta h_{f,i}^{ref} + C_{p,i}^{liq}(T - T_ref)\\right)
         """
         self.enth_mol = Expression(
             expr=sum(
@@ -662,6 +668,11 @@ class ThermoStateBlockData(StateBlockData):
 
         Uses component molecular weights and fixed liquid densities to estimate
         mixture density in the liquid phase.
+
+        LaTeX form:
+            \\overline{MW} = \\sum_i x_i MW_i
+            \\overline{V}_m = \\sum_i x_i MW_i / \\rho_i
+            \\rho_mix = \\overline{MW} / \\overline{V}_m
         """
         mixture_mw = sum(
             self.mole_frac_comp[component] * self.params.mw_comp[component]
@@ -684,6 +695,9 @@ class ThermoStateBlockData(StateBlockData):
 
         Uses mole-fraction weighted averaging of fixed component liquid heat
         capacities.
+
+        LaTeX form:
+            C_{p,mix}^{liq} = \\sum_i x_i C_{p,i}^{liq}
         """
         self.cp_mol = Expression(
             expr=sum(
@@ -754,6 +768,19 @@ class ThermoStateBlockData(StateBlockData):
     
     
     def _act_coeff_liq_comp(self):
+        """Build NRTL liquid-phase activity coefficients.
+
+        LaTeX form:
+            G_{ij} = \\exp(-\\alpha_{ij}\\tau_{ij})
+            S_i = \\sum_k x_k G_{ki}
+            N_i = \\sum_j x_j \\tau_{ji} G_{ji}
+            Q_j = \\sum_k x_k G_{kj}
+            P_j = \\sum_m x_m \\tau_{mj} G_{mj}
+            W_{ij} = x_j G_{ij} / Q_j
+            D_{ij} = \\tau_{ij} - P_j / Q_j
+            \\ln(\\gamma_i) = N_i / S_i + \\sum_j W_{ij} D_{ij}
+            \\gamma_i = \\exp(\\ln(\\gamma_i))
+        """
         eps = 1e-12
         
         self.G_nrtl = Expression(

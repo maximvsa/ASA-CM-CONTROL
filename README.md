@@ -2,6 +2,7 @@
 
 Personal Project To-do:
 - Complete all to-do lists in the top of each file in src/asa_cm_control
+- Validate the latex math in the doc strings of the property packages so that it can be pasted and be coherent
 - Add reaction 3 to reaction property package
 - Implement a rigorous electrolyte route for reactions to solve for \gamma_{H+} and stuff
 - Add liquid-vapor equilibrium support to thermophysical property package
@@ -11,6 +12,7 @@ Personal Project To-do:
 - Study how the code in run_asa_process.py actually works
 - See if we can get "number of iterations" to increase ... for some reason
 - Rewrite environment.yaml to be minimal yet fully functional
+- Review all of the docstrings for everything ...
 - Study pytest
 - Write a sanity check test script in tests folder using the pytest framework
 - Try to implement molecular decomposition physics at high temperatures

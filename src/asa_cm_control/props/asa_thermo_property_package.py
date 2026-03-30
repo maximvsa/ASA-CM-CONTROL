@@ -325,16 +325,26 @@ class ThermoParameterData(PhysicalParameterBlock):
                 'temperature': {'method': None},
                 'pressure': {'method': None},
                 'mole_frac_comp': {'method': None},
-                
                 'enth_mol': {'method': '_enth_mol'},
                 'dens_mass': {'method': '_dens_mass'},
                 'cp_mol': {'method': '_cp_mol'},
-                
                 'flow_mol_phase_comp': {'method': '_flow_mol_phase_comp'},
                 'mole_frac_phase_comp': {'method': '_mole_frac_phase_comp'},
                 'phase_frac': {'method': '_phase_frac'},
-                
+            }
+        )
+        
+        obj.define_custom_properties(
+            {
                 'act_coeff_liq_comp': {'method': '_act_coeff_liq_comp'},
+                'log_gamma_liq_comp': {'method': None},
+                'G_nrtl': {'method': None},
+                'S_nrtl': {'method': None},
+                'N_nrtl': {'method': None},
+                'Q_nrtl': {'method': None},
+                'P_nrtl': {'method': None},
+                'W_nrtl': {'method': None},
+                'D_nrtl': {'method': None},
             }
         )
         

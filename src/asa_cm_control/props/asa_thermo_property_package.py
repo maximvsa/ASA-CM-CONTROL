@@ -1,9 +1,5 @@
 # To-Do:
-# - Add latex to the doc strings of any mathematically-oriented functions
-
-
-
-
+# - 
 
 
 """Custom liquid-focused thermophysical package for first-pass ASA synthesis modeling.
@@ -30,7 +26,15 @@ from idaes.core import (
     MaterialBalanceType,
     EnergyBalanceType,
 )
-from pyomo.environ import Var, Expression, Constraint, NonNegativeReals, units as pyunits
+from pyomo.environ import (Var,
+    Expression,
+    Constraint,
+    NonNegativeReals,
+    units as pyunits,
+    Reals,
+    Set,
+    exp,
+)
 from idaes.core.util.initialization import fix_state_vars, revert_state_vars
 from idaes.core.util.exceptions import ConfigurationError
 import idaes.logger as idaeslog
@@ -195,16 +199,112 @@ class ThermoParameterData(PhysicalParameterBlock):
         )
         
         self.dh_form_liq_comp.fix()
-
-        self.act_coeff_liq_comp = Var(
-            self.component_list,
-            initialize=1.0,
-            bounds=(1e-12, None),
-            units=pyunits.dimensionless,
-            doc="Liquid-phase activity coefficient by component (ideal default = 1)",
+        
+        # NRTL Parameters:
+        
+        self.nrtl_pair_set = Set(
+            initialize=[(i, j) for i in self.component_list for j in self.component_list],
+            dimen=2,
         )
-
-        self.act_coeff_liq_comp.fix()
+        
+        self.tau_nrtl = Var(
+            self.nrtl_pair_set,
+            initialize=0.0,
+            domain=Reals,
+            units=pyunits.dimensionless
+        )
+        
+        self.tau_nrtl.fix()
+        
+        self.alpha_nrtl = Var(
+            self.nrtl_pair_set,
+            initialize=0.3,
+            domain=NonNegativeReals,
+            units=pyunits.dimensionless
+        )
+        
+        self.alpha_nrtl.fix()
+        
+        for c in self.component_list:
+            self.tau_nrtl[c, c].fix(0.0)
+            self.alpha_nrtl[c, c].fix(0.0)
+        
+        # -----------------------------
+        # tau_ij seeds (dimensionless)
+        # -----------------------------
+        
+        self.tau_nrtl["salicylic_acid", "acetic_anhydride"].fix(0.35)
+        self.tau_nrtl["acetic_anhydride", "salicylic_acid"].fix(0.15)
+        
+        self.tau_nrtl["salicylic_acid", "sulfuric_acid"].fix(0.10)
+        self.tau_nrtl["sulfuric_acid", "salicylic_acid"].fix(0.80)
+        
+        self.tau_nrtl["salicylic_acid", "aspirin"].fix(0.20)
+        self.tau_nrtl["aspirin", "salicylic_acid"].fix(0.15)
+        
+        self.tau_nrtl["salicylic_acid", "acetic_acid"].fix(0.55)
+        self.tau_nrtl["acetic_acid", "salicylic_acid"].fix(0.30)
+        
+        self.tau_nrtl["salicylic_acid", "water"].fix(1.80)
+        self.tau_nrtl["water", "salicylic_acid"].fix(0.60)
+        
+        self.tau_nrtl["acetic_anhydride", "sulfuric_acid"].fix(0.20)
+        self.tau_nrtl["sulfuric_acid", "acetic_anhydride"].fix(0.90)
+        
+        self.tau_nrtl["acetic_anhydride", "aspirin"].fix(0.45)
+        self.tau_nrtl["aspirin", "acetic_anhydride"].fix(0.20)
+        
+        self.tau_nrtl["acetic_anhydride", "acetic_acid"].fix(0.25)
+        self.tau_nrtl["acetic_acid", "acetic_anhydride"].fix(0.10)
+        
+        self.tau_nrtl["acetic_anhydride", "water"].fix(2.20)
+        self.tau_nrtl["water", "acetic_anhydride"].fix(0.40)
+        
+        self.tau_nrtl["sulfuric_acid", "aspirin"].fix(0.20)
+        self.tau_nrtl["aspirin", "sulfuric_acid"].fix(0.90)
+        
+        self.tau_nrtl["sulfuric_acid", "acetic_acid"].fix(-0.20)
+        self.tau_nrtl["acetic_acid", "sulfuric_acid"].fix(0.80)
+        
+        self.tau_nrtl["sulfuric_acid", "water"].fix(-0.80)
+        self.tau_nrtl["water", "sulfuric_acid"].fix(2.50)
+        
+        self.tau_nrtl["aspirin", "acetic_acid"].fix(0.40)
+        self.tau_nrtl["acetic_acid", "aspirin"].fix(0.25)
+        
+        self.tau_nrtl["aspirin", "water"].fix(2.00)
+        self.tau_nrtl["water", "aspirin"].fix(0.80)
+        
+        self.tau_nrtl["acetic_acid", "water"].fix(1.20)
+        self.tau_nrtl["water", "acetic_acid"].fix(-0.35)
+        
+        # -----------------------------------
+        # alpha_ij seeds (dimensionless)
+        # -----------------------------------
+        # Keep most pairs at 0.30, override selected pairs below
+        
+        self.alpha_nrtl["salicylic_acid", "water"].fix(0.35)
+        self.alpha_nrtl["water", "salicylic_acid"].fix(0.35)
+        
+        self.alpha_nrtl["aspirin", "water"].fix(0.35)
+        self.alpha_nrtl["water", "aspirin"].fix(0.35)
+        
+        self.alpha_nrtl["sulfuric_acid", "water"].fix(0.20)
+        self.alpha_nrtl["water", "sulfuric_acid"].fix(0.20)
+        
+        self.alpha_nrtl["sulfuric_acid", "acetic_acid"].fix(0.20)
+        self.alpha_nrtl["acetic_acid", "sulfuric_acid"].fix(0.20)
+        
+        self.alpha_nrtl["sulfuric_acid", "acetic_anhydride"].fix(0.20)
+        self.alpha_nrtl["acetic_anhydride", "sulfuric_acid"].fix(0.20)
+        
+        self.alpha_nrtl["sulfuric_acid", "salicylic_acid"].fix(0.20)
+        self.alpha_nrtl["salicylic_acid", "sulfuric_acid"].fix(0.20)
+        
+        self.alpha_nrtl["sulfuric_acid", "aspirin"].fix(0.20)
+        self.alpha_nrtl["aspirin", "sulfuric_acid"].fix(0.20)
+        
+        
 
     @classmethod
     def define_metadata(cls, obj):
@@ -220,14 +320,26 @@ class ThermoParameterData(PhysicalParameterBlock):
                 'temperature': {'method': None},
                 'pressure': {'method': None},
                 'mole_frac_comp': {'method': None},
-                
                 'enth_mol': {'method': '_enth_mol'},
                 'dens_mass': {'method': '_dens_mass'},
                 'cp_mol': {'method': '_cp_mol'},
-                
                 'flow_mol_phase_comp': {'method': '_flow_mol_phase_comp'},
                 'mole_frac_phase_comp': {'method': '_mole_frac_phase_comp'},
                 'phase_frac': {'method': '_phase_frac'},
+            }
+        )
+        
+        obj.define_custom_properties(
+            {
+                'act_coeff_liq_comp': {'method': '_act_coeff_liq_comp'},
+                'log_gamma_liq_comp': {'method': None},
+                'G_nrtl': {'method': None},
+                'S_nrtl': {'method': None},
+                'N_nrtl': {'method': None},
+                'Q_nrtl': {'method': None},
+                'P_nrtl': {'method': None},
+                'W_nrtl': {'method': None},
+                'D_nrtl': {'method': None},
             }
         )
         
@@ -431,6 +543,10 @@ class ThermoStateBlockData(StateBlockData):
         Returns:
             Expression-like term: Component molar density in liquid phase and
             zero for non-liquid phases.
+
+        LaTeX form (liquid phase):
+            c_i = x_i \\rho_mix / \\overline{MW}
+            \\overline{MW} = \\sum_k x_k MW_k
         """
         if phase != "liquid":
             return 0 * pyunits.mol / pyunits.m**3
@@ -465,6 +581,10 @@ class ThermoStateBlockData(StateBlockData):
         Returns:
             Expression-like term: Approximate liquid internal-energy density and
             zero for non-liquid phases.
+
+        LaTeX form:
+            h = u + pv
+            u_density = c_mol h - p
         """
         
         if phase == "liquid":
@@ -524,6 +644,9 @@ class ThermoStateBlockData(StateBlockData):
 
         The expression combines standard liquid formation enthalpy at reference
         temperature with constant liquid heat-capacity correction.
+
+        LaTeX form:
+            h = \\sum_i x_i \\left(\\Delta h_{f,i}^{ref} + C_{p,i}^{liq}(T - T_ref)\\right)
         """
         self.enth_mol = Expression(
             expr=sum(
@@ -545,6 +668,11 @@ class ThermoStateBlockData(StateBlockData):
 
         Uses component molecular weights and fixed liquid densities to estimate
         mixture density in the liquid phase.
+
+        LaTeX form:
+            \\overline{MW} = \\sum_i x_i MW_i
+            \\overline{V}_m = \\sum_i x_i MW_i / \\rho_i
+            \\rho_mix = \\overline{MW} / \\overline{V}_m
         """
         mixture_mw = sum(
             self.mole_frac_comp[component] * self.params.mw_comp[component]
@@ -567,6 +695,9 @@ class ThermoStateBlockData(StateBlockData):
 
         Uses mole-fraction weighted averaging of fixed component liquid heat
         capacities.
+
+        LaTeX form:
+            C_{p,mix}^{liq} = \\sum_i x_i C_{p,i}^{liq}
         """
         self.cp_mol = Expression(
             expr=sum(
@@ -633,4 +764,103 @@ class ThermoStateBlockData(StateBlockData):
             self.phase_list,
             rule=phase_frac_rule,
             doc="Phase fraction (liquid-only approximation)",
+        )
+    
+    
+    def _act_coeff_liq_comp(self):
+        """Build NRTL liquid-phase activity coefficients.
+
+        LaTeX form:
+            G_{ij} = \\exp(-\\alpha_{ij}\\tau_{ij})
+            S_i = \\sum_k x_k G_{ki}
+            N_i = \\sum_j x_j \\tau_{ji} G_{ji}
+            Q_j = \\sum_k x_k G_{kj}
+            P_j = \\sum_m x_m \\tau_{mj} G_{mj}
+            W_{ij} = x_j G_{ij} / Q_j
+            D_{ij} = \\tau_{ij} - P_j / Q_j
+            \\ln(\\gamma_i) = N_i / S_i + \\sum_j W_{ij} D_{ij}
+            \\gamma_i = \\exp(\\ln(\\gamma_i))
+        """
+        eps = 1e-12
+        
+        self.G_nrtl = Expression(
+            self.component_list,
+            self.component_list,
+            rule=lambda b, i, j: exp(
+                -b.params.alpha_nrtl[i, j] * b.params.tau_nrtl[i, j]
+            ),
+            doc="NRTL G_ij = exp(-alpha_ij * tau_ij)",
+        )
+        
+        self.S_nrtl = Expression(
+            self.component_list,
+            rule=lambda b, i: sum(
+                b.mole_frac_comp[k] * b.G_nrtl[k, i]
+                for k in b.component_list
+            ) + eps,
+            doc="NRTL S_i = sum_k x_k G_ki",
+        )
+        
+        self.N_nrtl = Expression(
+            self.component_list,
+            rule=lambda b, i: sum(
+                b.mole_frac_comp[j]
+                * b.params.tau_nrtl[j, i]
+                * b.G_nrtl[j, i]
+                for j in b.component_list
+            ),
+            doc="NRTL N_i = sum_j x_j tau_ji G_ji",
+        )
+        
+        self.Q_nrtl = Expression(
+            self.component_list,
+            rule=lambda b, j: sum(
+                b.mole_frac_comp[k] * b.G_nrtl[k, j]
+                for k in b.component_list
+            ) + eps,
+            doc="NRTL Q_j = sum_k x_k G_kj",
+        )
+        
+        self.P_nrtl = Expression(
+            self.component_list,
+            rule=lambda b, j: sum(
+                b.mole_frac_comp[m]
+                * b.params.tau_nrtl[m, j]
+                * b.G_nrtl[m, j]
+                for m in b.component_list
+            ),
+            doc="NRTL P_j = sum_m x_m tau_mj G_mj",
+        )
+        
+        self.W_nrtl = Expression(
+            self.component_list,
+            self.component_list,
+            rule=lambda b, i, j: (
+                b.mole_frac_comp[j] * b.G_nrtl[i, j] / b.Q_nrtl[j]
+            ),
+            doc="NRTL W_ij = x_j G_ij / Q_j",
+        )
+        
+        self.D_nrtl = Expression(
+            self.component_list,
+            self.component_list,
+            rule=lambda b, i, j: (
+                b.params.tau_nrtl[i, j] - b.P_nrtl[j] / b.Q_nrtl[j]
+            ),
+            doc="NRTL D_ij = tau_ij - P_j/Q_j",
+        )
+        
+        self.log_gamma_liq_comp = Expression(
+            self.component_list,
+            rule=lambda b, i: (
+                b.N_nrtl[i] / b.S_nrtl[i]
+                + sum(b.W_nrtl[i, j] * b.D_nrtl[i, j] for j in b.component_list)
+            ),
+            doc="NRTL ln(gamma_i)",
+        )
+        
+        self.act_coeff_liq_comp = Expression(
+            self.component_list,
+            rule=lambda b, i: exp(b.log_gamma_liq_comp[i]),
+            doc="Liquid activity coefficient gamma_i from NRTL",
         )

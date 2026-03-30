@@ -1,5 +1,5 @@
 # To-Do:
-# - 
+# - Fill out the doc string kwarg pass-ins for everything
 
 
 """Custom reaction property package for ASA synthesis kinetics.
@@ -67,6 +67,7 @@ class ASAReactionParameterData(ReactionParameterBlock):
         self.rate_reaction_idx = Set(initialize=[
             "r1_aspirin_synthesis",
             "r2_acetic_anhydride_hydrolysis",
+            "r3_aspirin_hydrolysis"
             ]
         )
         
@@ -93,7 +94,7 @@ class ASAReactionParameterData(ReactionParameterBlock):
             ("r1_aspirin_synthesis", "solid", "aspirin"): 0,
             ("r1_aspirin_synthesis", "solid", "acetic_acid"): 0,
             ("r1_aspirin_synthesis", "solid", "water"): 0,
-
+            
             # r2: acetic_anhydride + water -> 2 acetic_acid (liquid only)
             ("r2_acetic_anhydride_hydrolysis", "liquid", "salicylic_acid"): 0,
             ("r2_acetic_anhydride_hydrolysis", "liquid", "acetic_anhydride"): -1,
@@ -113,6 +114,26 @@ class ASAReactionParameterData(ReactionParameterBlock):
             ("r2_acetic_anhydride_hydrolysis", "solid", "aspirin"): 0,
             ("r2_acetic_anhydride_hydrolysis", "solid", "acetic_acid"): 0,
             ("r2_acetic_anhydride_hydrolysis", "solid", "water"): 0,
+            
+            # r3: aspirin + water -> salicylic_acid + acetic_acid (liquid_only)
+            ("r3_aspirin_hydrolysis", "liquid", "salicylic_acid"): 1,
+            ("r3_aspirin_hydrolysis", "liquid", "acetic_anhydride"): 0,
+            ("r3_aspirin_hydrolysis", "liquid", "sulfuric_acid"): 0,
+            ("r3_aspirin_hydrolysis", "liquid", "aspirin"): -1,
+            ("r3_aspirin_hydrolysis", "liquid", "acetic_acid"): 1,
+            ("r3_aspirin_hydrolysis", "liquid", "water"): -1,
+            ("r3_aspirin_hydrolysis", "vapor", "salicylic_acid"): 0,
+            ("r3_aspirin_hydrolysis", "vapor", "acetic_anhydride"): 0,
+            ("r3_aspirin_hydrolysis", "vapor", "sulfuric_acid"): 0,
+            ("r3_aspirin_hydrolysis", "vapor", "aspirin"): 0,
+            ("r3_aspirin_hydrolysis", "vapor", "acetic_acid"): 0,
+            ("r3_aspirin_hydrolysis", "vapor", "water"): 0,
+            ("r3_aspirin_hydrolysis", "solid", "salicylic_acid"): 0,
+            ("r3_aspirin_hydrolysis", "solid", "acetic_anhydride"): 0,
+            ("r3_aspirin_hydrolysis", "solid", "sulfuric_acid"): 0,
+            ("r3_aspirin_hydrolysis", "solid", "aspirin"): 0,
+            ("r3_aspirin_hydrolysis", "solid", "acetic_acid"): 0,
+            ("r3_aspirin_hydrolysis", "solid", "water"): 0,
         }
         
         # EMPTY FOR NOW, WILL FILL IN IF EQUILIBRIUM REACTIONS ARE EVER USED
@@ -251,6 +272,72 @@ class ASAReactionParameterData(ReactionParameterBlock):
         )
         
         self.beta_2.fix()
+        
+        
+        # PARAMETER SET FOR REACTION 3
+        
+        self.A0_3 = Var(
+            initialize=1.5e9,
+            domain=NonNegativeReals,
+            units=reaction_rate_units,
+            doc="",
+        )
+        
+        self.A0_3.fix()
+        
+        self.Ea0_3 = Var(
+            initialize=5.01e4,
+            domain=NonNegativeReals,
+            units=pyunits.J/pyunits.mol,
+            doc="",
+        )
+        
+        self.Ea0_3.fix()
+        
+        self.Acat_3 = Var(
+            initialize=1.0e13,
+            domain=NonNegativeReals,
+            units=reaction_rate_units,
+            doc="",
+        )
+        
+        self.Acat_3.fix()
+        
+        self.Ea_cat_3 = Var(
+            initialize=5.78e4,
+            domain=NonNegativeReals,
+            units=pyunits.J/pyunits.mol,
+            doc="",
+        )
+        
+        self.Ea_cat_3.fix()
+        
+        self.m_3 = Var(
+            initialize=1.0,
+            domain=NonNegativeReals,
+            units=pyunits.dimensionless,
+            doc="",
+        )
+        
+        self.m_3.fix()
+        
+        self.alpha_3 = Var(
+            initialize=1.0,
+            domain=NonNegativeReals,
+            units=pyunits.dimensionless,
+            doc="",
+        )
+        
+        self.alpha_3.fix()
+        
+        self.beta_3 = Var(
+            initialize=1.0,
+            domain=NonNegativeReals,
+            units=pyunits.dimensionless,
+            doc="",
+        )
+        
+        self.beta_3.fix()
 
     @classmethod
     def define_metadata(cls, obj):
@@ -354,6 +441,7 @@ class ASAReactionBlockData(ReactionBlockDataBase):
         a_sa = gamma["salicylic_acid"] * state.mole_frac_comp["salicylic_acid"] + eps
         a_aa = gamma["acetic_anhydride"] * state.mole_frac_comp["acetic_anhydride"] + eps
         a_h2o = gamma["water"] * state.mole_frac_comp["water"] + eps
+        a_asa = gamma["aspirin"] * state.mole_frac_comp["aspirin"] + eps
         
         def reaction_rule(b, reaction):
             
@@ -370,6 +458,13 @@ class ASAReactionBlockData(ReactionBlockDataBase):
                 kcat = params.Acat_2 * exp(-params.Ea_cat_2 / (R * state.temperature))
                 
                 return (k0 + kcat * a_hplus ** params.m_2) * a_aa ** params.alpha_2 * a_h2o ** params.beta_2
+            
+            if reaction == "r3_aspirin_hydrolysis":
+                
+                k0 = params.A0_3 * exp(-params.Ea0_3 / (R * state.temperature))
+                kcat = params.Acat_3 * exp(-params.Ea_cat_3 / (R * state.temperature))
+                
+                return (k0 + kcat * a_hplus ** params.m_3) * a_asa ** params.alpha_3 * a_h2o ** params.beta_3
             
             raise ConfigurationError(
                 f"Unknown reaction '{reaction}' encountered in "

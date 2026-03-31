@@ -192,3 +192,72 @@ class ASAElectroThermoParameterData(PhysicalParameterBlock):
         )
         
         self.Ka2.fix()
+        
+        # ADD NRTL ELECTROLYTE-AWARE ACTIVITY TREATMENT HERE
+        
+    
+    @classmethod
+    def define_metadata(cls, obj):
+        obj.add_properties(
+            {
+                'flow_mol': {'method': None},
+                'temperature': {'method': None},
+                'pressure': {'method': None},
+                'mole_frac_comp': {'method': None},
+                
+                # See if method is actually None or something else
+                'mole_frac_comp_true': {'method': None},
+                
+                'enth_mol': {'method': '_enth_mol'},
+                'dens_mass': {'method': '_dens_mass'},
+                'cp_mol': {'method': '_cp_mol'},
+                'flow_mol_phase_comp': {'method': '_flow_mol_phase_comp'},
+                'mole_frac_phase_comp': {'method': '_mole_frac_phase_comp'},
+                'phase_frac': {'method': '_phase_frac'},
+            }
+        )
+        
+        obj.define_custom_properties(
+            {
+                'act_coeff_comp_true': {'method': '_act_coeff_comp_true'},
+                'activity_comp_true': {'method': '_activity_comp_true'},
+                'ionic_strength': {'method': '_ionic_strength'},
+                'charge_balance_residual': {'method': '_charge_balance_residual'},
+                'total_sulfur': {'method': '_total_sulfur'},
+                'total_protons': {'method': '_total_protons'},
+                'pH': {'method': '_pH'}
+            }
+        )
+        
+        obj.add_default_units(
+            {
+                'time': pyunits.s,
+                'length': pyunits.m,
+                'mass': pyunits.kg,
+                'amount': pyunits.mol,
+                'temperature': pyunits.K
+            }
+        )
+
+class ASAElectroThermoStateBlockMethods(StateBlock):
+    def initialize(
+        self,
+        state_args=None,
+        state_vars_fixed=False,
+        hold_state=False,
+        outlvl=idaeslog.NOTSET,
+        solver=None,
+        optarg=None,
+    ):
+        pass
+    
+    def fix_initialization_states(self):
+        pass
+    
+    def release_state(self, flags, outlvl=idaeslog.NOTSET):
+        pass
+
+@declare_process_block_class("ASAElectroThermoStateBlock", block_class="ASAElectroThermoStateBlockMethods")
+class ASAElectroThermoStateBlockData(StateBlockData):
+    def build(self):
+        super().build()

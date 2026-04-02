@@ -42,8 +42,8 @@ import idaes.logger as idaeslog
 
 # PARAMETER BLOCK CLASS
 
-@declare_process_block_class("ThermoParameterBlock")
-class ThermoParameterData(PhysicalParameterBlock):
+@declare_process_block_class("ASAThermoParameterBlock")
+class ASAThermoParameterData(PhysicalParameterBlock):
     """Thermophysical parameter block for the ASA component set.
 
     The block defines components, phases, reference conditions, and fixed global
@@ -58,14 +58,18 @@ class ThermoParameterData(PhysicalParameterBlock):
         molecular weights, heat capacities, densities, and formation enthalpies.
         """
         super().build()
-        self._state_block_class = ThermoStateBlock
+        self._state_block_class = ASAThermoStateBlock
         
         self.salicylic_acid = Component()
         self.acetic_anhydride = Component()
-        self.sulfuric_acid = Component()
         self.aspirin = Component()
         self.acetic_acid = Component()
         self.water = Component()
+        
+        self.H2SO4 = Component()
+        self.H_plus = Component()
+        self.HSO4_minus = Component()
+        self.SO4_2minus = Component()
         
         self.liquid = LiquidPhase()
         self.vapor = VaporPhase()
@@ -92,10 +96,13 @@ class ThermoParameterData(PhysicalParameterBlock):
             initialize={
                 "salicylic_acid": 0.13812,
                 "acetic_anhydride": 0.10209,
-                "sulfuric_acid": 0.098079,
                 "aspirin": 0.18016,
                 "acetic_acid": 0.06005,
                 "water": 0.01801528,
+                "H2SO4": 0.098079,
+                "H_plus": 0,
+                "HSO4_minus": 0,
+                "SO4_2minus": 0,
             },
             units=pyunits.kg / pyunits.mol,
             doc="Molecular weight of each component in kg/mol",
@@ -108,10 +115,13 @@ class ThermoParameterData(PhysicalParameterBlock):
             initialize={
                 "salicylic_acid": 210.0,
                 "acetic_anhydride": 168.2,
-                "sulfuric_acid": 137.6,
                 "aspirin": 270.0,
                 "acetic_acid": 123.1,
                 "water": 75.37,
+                "H2SO4": 137.6,
+                "H_plus": 0,
+                "HSO4_minus": 0,
+                "SO4_2minus": 0,
             },
             units=pyunits.J / pyunits.mol / pyunits.K,
             doc="Constant molar heat capacity for liquid phase by component"
@@ -124,10 +134,13 @@ class ThermoParameterData(PhysicalParameterBlock):
             initialize={
                 "salicylic_acid": 120.0,
                 "acetic_anhydride": 99.50,
-                "sulfuric_acid": 83.71,
                 "aspirin": 149.0,
                 "acetic_acid": 63.44,
                 "water": 33.58,
+                "H2SO4": 83.71,
+                "H_plus": 0,
+                "HSO4_minus": 0,
+                "SO4_2minus": 0,
             },
             units=pyunits.J/pyunits.mol/pyunits.K,
             doc="Constant molar heat capacity for vapor phase by component"
@@ -140,10 +153,13 @@ class ThermoParameterData(PhysicalParameterBlock):
             initialize={
                 "salicylic_acid": 160.9,
                 "acetic_anhydride": 168.2,
-                "sulfuric_acid": 137.6,
                 "aspirin": 217.8,
                 "acetic_acid": 123.1,
                 "water": 37.77,
+                "H2SO4": 137.6,
+                "H_plus": 0,
+                "HSO4_minus": 0,
+                "SO4_2minus": 0,
             },
             units=pyunits.J/pyunits.mol/pyunits.K,
             doc="Constant molar heat capacity for solid phase by component"
@@ -156,10 +172,13 @@ class ThermoParameterData(PhysicalParameterBlock):
             initialize={
                 "salicylic_acid": 1440.0,
                 "acetic_anhydride": 1060.0,
-                "sulfuric_acid": 1840.0,
                 "aspirin": 1330.0,
                 "acetic_acid": 1053.0,
                 "water": 1000.0,
+                "H2SO4": 1840.0,
+                "H_plus": 0,
+                "HSO4_minus": 0,
+                "SO4_2minus": 0,
             },
             units=pyunits.kg / pyunits.m**3,
             doc="Density of pure liquid component at reference conditions (Some are estimated based on literature values at 25C, may need to be updated with more accurate values or temperature dependence)"
@@ -172,10 +191,13 @@ class ThermoParameterData(PhysicalParameterBlock):
             initialize={
                 "salicylic_acid": 1443.0,
                 "acetic_anhydride": 1346.0,
-                "sulfuric_acid": 1940.0,
                 "aspirin": 1335.0,
                 "acetic_acid": 1266.0,
                 "water": 916.7,
+                "H2SO4": 1940.0,
+                "H_plus": 0,
+                "HSO4_minus": 0,
+                "SO4_2minus": 0,
             },
             units=pyunits.kg / pyunits.m**3,
             doc="Density of pure solid component at reference conditions (Some are estimated based on literature values at 25C, may need to be updated with more accurate values or temperature dependence)"
@@ -189,16 +211,76 @@ class ThermoParameterData(PhysicalParameterBlock):
             initialize={
                 "salicylic_acid": -585260,
                 "acetic_anhydride": -625000,
-                "sulfuric_acid": -814000,
                 "aspirin": -758200,
                 "acetic_acid": -484000,
                 "water": -286000,
+                "H2SO4": -814000,
+                "H_plus": 0,
+                "HSO4_minus": 0,
+                "SO4_2minus": 0,
             },
             units=pyunits.J / pyunits.mol,
             doc="Standard enthalpy of formation at reference conditions of 298.15K for liquid phase by component"
         )
         
         self.dh_form_liq_comp.fix()
+        
+        self.charge_comp = Var(
+            self.component_list,
+            initialize={
+                "salicylic_acid": 0,
+                "acetic_anhydride": 0,
+                "aspirin": 0,
+                "acetic_acid": 0,
+                "water": 0,
+                "H2SO4": 0,
+                "H_plus": 1,
+                "HSO4_minus": -1,
+                "SO4_2minus": -2,
+            },
+            units=pyunits.dimensionless,
+            doc="",
+        )
+        
+        self.charge_comp.fix()
+        
+        self.Ka1 = Var(
+            self.component_list,
+            initialize={
+                "salicylic_acid": 0,
+                "acetic_anhydride": 0,
+                "aspirin": 0,
+                "acetic_acid": 0,
+                "water": 0,
+                "H2SO4": 0,
+                "H_plus": 0,
+                "HSO4_minus": 0,
+                "SO4_2minus": 0,
+            },
+            units=pyunits.dimensionless,
+            doc=""
+        )
+        
+        self.Ka1.fix()
+        
+        self.Ka2 = Var(
+            self.component_list,
+            initialize={
+                "salicylic_acid": 0,
+                "acetic_anhydride": 0,
+                "aspirin": 0,
+                "acetic_acid": 0,
+                "water": 0,
+                "H2SO4": 0,
+                "H_plus": 0,
+                "HSO4_minus": 0,
+                "SO4_2minus": 0,
+            },
+            units=pyunits.dimensionless,
+            doc=""
+        )
+        
+        self.Ka2.fix()
         
         # NRTL Parameters:
         
@@ -236,8 +318,8 @@ class ThermoParameterData(PhysicalParameterBlock):
         self.tau_nrtl["salicylic_acid", "acetic_anhydride"].fix(0.35)
         self.tau_nrtl["acetic_anhydride", "salicylic_acid"].fix(0.15)
         
-        self.tau_nrtl["salicylic_acid", "sulfuric_acid"].fix(0.10)
-        self.tau_nrtl["sulfuric_acid", "salicylic_acid"].fix(0.80)
+        self.tau_nrtl["salicylic_acid", "H2SO4"].fix(0.10)
+        self.tau_nrtl["H2SO4", "salicylic_acid"].fix(0.80)
         
         self.tau_nrtl["salicylic_acid", "aspirin"].fix(0.20)
         self.tau_nrtl["aspirin", "salicylic_acid"].fix(0.15)
@@ -248,8 +330,8 @@ class ThermoParameterData(PhysicalParameterBlock):
         self.tau_nrtl["salicylic_acid", "water"].fix(1.80)
         self.tau_nrtl["water", "salicylic_acid"].fix(0.60)
         
-        self.tau_nrtl["acetic_anhydride", "sulfuric_acid"].fix(0.20)
-        self.tau_nrtl["sulfuric_acid", "acetic_anhydride"].fix(0.90)
+        self.tau_nrtl["acetic_anhydride", "H2SO4"].fix(0.20)
+        self.tau_nrtl["H2SO4", "acetic_anhydride"].fix(0.90)
         
         self.tau_nrtl["acetic_anhydride", "aspirin"].fix(0.45)
         self.tau_nrtl["aspirin", "acetic_anhydride"].fix(0.20)
@@ -260,14 +342,14 @@ class ThermoParameterData(PhysicalParameterBlock):
         self.tau_nrtl["acetic_anhydride", "water"].fix(2.20)
         self.tau_nrtl["water", "acetic_anhydride"].fix(0.40)
         
-        self.tau_nrtl["sulfuric_acid", "aspirin"].fix(0.20)
-        self.tau_nrtl["aspirin", "sulfuric_acid"].fix(0.90)
+        self.tau_nrtl["H2SO4", "aspirin"].fix(0.20)
+        self.tau_nrtl["aspirin", "H2SO4"].fix(0.90)
         
-        self.tau_nrtl["sulfuric_acid", "acetic_acid"].fix(-0.20)
-        self.tau_nrtl["acetic_acid", "sulfuric_acid"].fix(0.80)
+        self.tau_nrtl["H2SO4", "acetic_acid"].fix(-0.20)
+        self.tau_nrtl["acetic_acid", "H2SO4"].fix(0.80)
         
-        self.tau_nrtl["sulfuric_acid", "water"].fix(-0.80)
-        self.tau_nrtl["water", "sulfuric_acid"].fix(2.50)
+        self.tau_nrtl["H2SO4", "water"].fix(-0.80)
+        self.tau_nrtl["water", "H2SO4"].fix(2.50)
         
         self.tau_nrtl["aspirin", "acetic_acid"].fix(0.40)
         self.tau_nrtl["acetic_acid", "aspirin"].fix(0.25)
@@ -289,20 +371,20 @@ class ThermoParameterData(PhysicalParameterBlock):
         self.alpha_nrtl["aspirin", "water"].fix(0.35)
         self.alpha_nrtl["water", "aspirin"].fix(0.35)
         
-        self.alpha_nrtl["sulfuric_acid", "water"].fix(0.20)
-        self.alpha_nrtl["water", "sulfuric_acid"].fix(0.20)
+        self.alpha_nrtl["H2SO4", "water"].fix(0.20)
+        self.alpha_nrtl["water", "H2SO4"].fix(0.20)
         
-        self.alpha_nrtl["sulfuric_acid", "acetic_acid"].fix(0.20)
-        self.alpha_nrtl["acetic_acid", "sulfuric_acid"].fix(0.20)
+        self.alpha_nrtl["H2SO4", "acetic_acid"].fix(0.20)
+        self.alpha_nrtl["acetic_acid", "H2SO4"].fix(0.20)
         
-        self.alpha_nrtl["sulfuric_acid", "acetic_anhydride"].fix(0.20)
-        self.alpha_nrtl["acetic_anhydride", "sulfuric_acid"].fix(0.20)
+        self.alpha_nrtl["H2SO4", "acetic_anhydride"].fix(0.20)
+        self.alpha_nrtl["acetic_anhydride", "H2SO4"].fix(0.20)
         
-        self.alpha_nrtl["sulfuric_acid", "salicylic_acid"].fix(0.20)
-        self.alpha_nrtl["salicylic_acid", "sulfuric_acid"].fix(0.20)
+        self.alpha_nrtl["H2SO4", "salicylic_acid"].fix(0.20)
+        self.alpha_nrtl["salicylic_acid", "H2SO4"].fix(0.20)
         
-        self.alpha_nrtl["sulfuric_acid", "aspirin"].fix(0.20)
-        self.alpha_nrtl["aspirin", "sulfuric_acid"].fix(0.20)
+        self.alpha_nrtl["H2SO4", "aspirin"].fix(0.20)
+        self.alpha_nrtl["aspirin", "H2SO4"].fix(0.20)
         
         
 
@@ -356,7 +438,7 @@ class ThermoParameterData(PhysicalParameterBlock):
 
 # STATE BLOCK CLASSES
 
-class ThermoStateBlockMethods(StateBlock):
+class ASAThermoStateBlockMethods(StateBlock):
     """Mixin methods attached to the generated ThermoStateBlock class.
 
     These methods provide initialization and state-release utilities required by
@@ -439,8 +521,8 @@ class ThermoStateBlockMethods(StateBlock):
 
 
 
-@declare_process_block_class("ThermoStateBlock", block_class=ThermoStateBlockMethods)
-class ThermoStateBlockData(StateBlockData):
+@declare_process_block_class("ASAThermoStateBlock", block_class=ASAThermoStateBlockMethods)
+class ASAThermoStateBlockData(StateBlockData):
     """State block data class for the custom ASA thermophysical package.
 
     This class defines state variables and build-on-demand property expressions

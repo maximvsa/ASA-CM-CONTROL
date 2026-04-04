@@ -104,9 +104,9 @@ class ASAThermoParameterData(PhysicalParameterBlock):
                 "acetic_acid": 123.1,
                 "water": 75.37,
                 "H2SO4": 137.6,
-                "H_plus": 0,
-                "HSO4_minus": 0,
-                "SO4_2minus": 0,
+                "H_plus": 75.37,
+                "HSO4_minus": 135.0,
+                "SO4_2minus": 20.0,
             },
             units=pyunits.J / pyunits.mol / pyunits.K,
             doc="Constant molar heat capacity for liquid phase by component"
@@ -201,8 +201,8 @@ class ASAThermoParameterData(PhysicalParameterBlock):
                 "water": -286000,
                 "H2SO4": -814000,
                 "H_plus": 0,
-                "HSO4_minus": 0,
-                "SO4_2minus": 0,
+                "HSO4_minus": -907500,
+                "SO4_2minus": -882000,
             },
             units=pyunits.J / pyunits.mol,
             doc="Standard enthalpy of formation at reference conditions of 298.15K for liquid phase by component"
@@ -237,7 +237,9 @@ class ASAThermoParameterData(PhysicalParameterBlock):
             "water",
             "H2SO4",
         ]
+        
         self.neutral_component_set = Set(initialize=neutral_components)
+        
         self.molecular_component_set = Set(
             initialize=[
                 "salicylic_acid",

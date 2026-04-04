@@ -2,6 +2,7 @@
 
 Personal Project To-do:
 - Complete all to-do lists in the top of each file in src/asa_cm_control
+- Implement a proper Davies solver
 - Implement a semi-rigorous electrolyte route for reactions to solve for \gamma_{H+} and stuff
 - Write a latex one-pager explaining all the math
 - Figure out how to get rid of static-checking error for block class reference at the top of both property packages

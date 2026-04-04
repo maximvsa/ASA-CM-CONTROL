@@ -305,6 +305,11 @@ class ASAReactionParameterData(ReactionParameterBlock):
         obj.add_properties(
             {
                 'reaction_rate': {'method': '_reaction_rate'},
+            }
+        )
+        
+        obj.define_custom_properties(
+            {
                 'equilibrium_constraint': {'method': '_equilibrium_constraint'},
             }
         )

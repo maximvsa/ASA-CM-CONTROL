@@ -95,7 +95,7 @@ class ASAReactionParameterData(ReactionParameterBlock):
         self.Keq_e1.fix()
         
         self.Keq_e2 = Var(
-            initialize=1.2e-2,
+            initialize=1.19e-2,
             domain=PositiveReals,
             units=pyunits.dimensionless,
         )

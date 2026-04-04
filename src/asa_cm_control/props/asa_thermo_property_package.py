@@ -85,9 +85,9 @@ class ASAThermoParameterData(PhysicalParameterBlock):
                 "acetic_acid": 0.06005,
                 "water": 0.01801528,
                 "H2SO4": 0.098079,
-                "H_plus": 0,
-                "HSO4_minus": 0,
-                "SO4_2minus": 0,
+                "H_plus": 0.001008,
+                "HSO4_minus": 0.097071,
+                "SO4_2minus": 0.096063,
             },
             units=pyunits.kg / pyunits.mol,
             doc="Molecular weight of each component in kg/mol",
@@ -228,46 +228,6 @@ class ASAThermoParameterData(PhysicalParameterBlock):
         )
         
         self.charge_comp.fix()
-        
-        self.Ka1 = Var(
-            self.component_list,
-            initialize={
-                "salicylic_acid": 0,
-                "acetic_anhydride": 0,
-                "aspirin": 0,
-                "acetic_acid": 0,
-                "water": 0,
-                "H2SO4": 1e3,
-                "H_plus": 0,
-                "HSO4_minus": 0,
-                "SO4_2minus": 0,
-            },
-            units=pyunits.dimensionless,
-            doc="",
-        )
-        
-        self.Ka1.fix()
-        
-        self.Ka2 = Var(
-            self.component_list,
-            initialize={
-                "salicylic_acid": 0,
-                "acetic_anhydride": 0,
-                "aspirin": 0,
-                "acetic_acid": 0,
-                "water": 0,
-                "H2SO4": 0,
-                "H_plus": 0,
-                "HSO4_minus": 1.2e-2,
-                "SO4_2minus": 0,
-            },
-            units=pyunits.dimensionless,
-            doc="",
-        )
-        
-        self.Ka2.fix()
-        
-        # NRTL Parameters:
         
         neutral_components = [
             "salicylic_acid",

@@ -654,9 +654,10 @@ class ASAThermoStateBlockData(StateBlockData):
             + 2*self.mole_frac_comp_true["SO4_2minus"]
         )
 
-        # Sulfuric acid is treated as fully dissociated in the first proton.
-        self.first_proton_dissociation = Constraint(
-            expr=self.mole_frac_comp_true["H2SO4"] == 0.0
+        # Ka1 relation: a_H+ * x_HSO4 = Ka1 * x_H2SO4
+        self.ka1_equilibrium = Constraint(
+            expr=self.a_H_plus * self.mole_frac_comp_true["HSO4_minus"]
+            == self.params.Ka1["H2SO4"] * self.mole_frac_comp_true["H2SO4"]
         )
 
         # Ka2 relation: a_H+ * x_SO4 = Ka2 * x_HSO4

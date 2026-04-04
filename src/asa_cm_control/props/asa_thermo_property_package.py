@@ -460,11 +460,14 @@ class ASAThermoParameterData(PhysicalParameterBlock):
                 
                 'act_coeff_true_comp': {'method': '_act_coeff_true_comp'},
                 'activity_true_comp': {'method': '_activity_true_comp'},
+                
                 'ionic_strength': {'method': '_ionic_strength'},
+                'log10_gamma_davies_ion_comp': {'method': '_log10_gamma_davies_ion_comp'},
+                'gamma_davies_ion_comp': {'method': '_gamma_davies_ion_comp'},
+                
                 'a_H_plus': {'method': '_a_H_plus'},
                 'x_H_plus': {'method': '_x_H_plus'},
                 'gamma_H_plus': {'method': '_gamma_H_plus'},
-                
             }
         )
         
@@ -966,53 +969,57 @@ class ASAThermoStateBlockData(StateBlockData):
             else 1.0,
             doc="Liquid activity coefficient gamma_i from NRTL",
         )
-
+    
     def _ionic_strength(self):
-        """Build ionic strength expression from the true ionic composition."""
         self.ionic_strength = Expression(
-            expr=0.5 * (
-                self.mole_frac_comp_true["H_plus"]
-                + self.mole_frac_comp_true["HSO4_minus"]
-                + 4 * self.mole_frac_comp_true["SO4_2minus"]
+            expr=0.5 * sum(
+                self.params.charge_comp[ion] ** 2 * self.mole_frac_comp_true[ion]
+                for ion in self.params.ionic_component_set
             )
         )
-
-
+    
+    def _log10_gamma_davies_ion_comp(self):
+        epsilon = 1e-8
+        
+        def rule(block, ion):
+            sqrt_i = (block.ionic_strength + epsilon) ** 0.5
+            davies_term = sqrt_i / (1 + sqrt_i) - 0.3 * block.ionic_strength
+            return -block.params.A_Davies * (block.params.charge_comp[ion] ** 2) * davies_term
+        
+        self.log10_gamma_davies_ion_comp = Expression(
+            self.params.ionic_component_set,
+            rule=rule,
+        )
+    
+    def _gamma_davies_ion_comp(self):
+        self.gamma_davies_ion_comp = Expression(
+            self.params.ionic_component_set,
+            rule=lambda block, ion: 10 ** block.log10_gamma_davies_ion_comp[ion],
+        )
+    
     def _x_H_plus(self):
-        """Build helper expression for true proton mole fraction."""
         self.x_H_plus = Expression(expr=self.mole_frac_comp_true["H_plus"])
-
-
+    
     def _gamma_H_plus(self):
-        """Build Davies activity-coefficient expression for the proton."""
-        eps = 1e-12
-        sqrt_i = (self.ionic_strength + eps) ** 0.5
-        self.log10_gamma_H_plus = Expression(
-            expr=-self.params.A_Davies * (
-                sqrt_i / (1 + sqrt_i) - 0.3 * self.ionic_strength
-            )
-        )
-        self.gamma_H_plus = Expression(expr=10 ** self.log10_gamma_H_plus)
-
-
+        self.gamma_H_plus = Expression(expr=self.gamma_davies_ion_comp["H_plus"])
+    
     def _act_coeff_true_comp(self):
-        """Build hybrid activity coefficients: NRTL for neutral, Davies for H+."""
         self.act_coeff_true_comp = Expression(
             self.component_list,
-            rule=lambda b, i: b.act_coeff_liq_comp[i]
-            if i in b.params.neutral_component_set
-            else (b.gamma_H_plus if i == "H_plus" else 1.0),
+            rule=lambda block, component: block.act_coeff_liq_comp[component]
+            if component in block.params.neutral_component_set
+            else (
+                block.gamma_davies_ion_comp[component]
+                if component in block.params.ionic_component_set
+                else 1.0
+            ),
         )
-
-
+    
     def _activity_true_comp(self):
-        """Build true-species activities used by reaction kinetics."""
         self.activity_true_comp = Expression(
             self.component_list,
-            rule=lambda b, i: b.act_coeff_true_comp[i] * b.mole_frac_comp_true[i],
+            rule=lambda block, component: block.act_coeff_true_comp[component] * block.mole_frac_comp_true[component],
         )
-
-
+    
     def _a_H_plus(self):
-        """Build helper expression for proton activity."""
         self.a_H_plus = Expression(expr=self.activity_true_comp["H_plus"])

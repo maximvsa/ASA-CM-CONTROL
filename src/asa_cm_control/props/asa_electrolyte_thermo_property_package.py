@@ -29,7 +29,7 @@ import idaes.logger as idaeslog
 class ASAElectroThermoParameterData(PhysicalParameterBlock):
     def build(self):
         super().build()
-        self._state_block_class = ASAElectroThermoStateBlock
+        self._state_block_class = ASAElectroThermoStateBlock   # pyright: ignore[reportUndefinedVariable]
         
         self.salicylic_acid = Component()
         self.acetic_anhydride = Component()

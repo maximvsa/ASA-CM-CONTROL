@@ -20,7 +20,7 @@ The module is intentionally importable and does not provide a direct
 
 from pyomo.environ import ConcreteModel, SolverFactory
 from idaes.core import FlowsheetBlock
-from asa_cm_control.props.asa_thermo_property_package import ThermoParameterBlock
+from asa_cm_control.props.asa_thermo_property_package import ASAThermoParameterBlock
 from asa_cm_control.props.asa_reaction_property_package import ASAReactionParameterBlock
 from idaes.models.unit_models import CSTR
 from idaes.core.util.model_statistics import degrees_of_freedom
@@ -30,7 +30,7 @@ def build_flowsheet():
     model = ConcreteModel()
     model.fs = FlowsheetBlock(dynamic=False)
     
-    model.fs.thermo_params = ThermoParameterBlock()
+    model.fs.thermo_params = ASAThermoParameterBlock()
     model.fs.reaction_params = ASAReactionParameterBlock(
         property_package=model.fs.thermo_params,
     )
@@ -52,7 +52,7 @@ def set_operating_conditions(model):
     major = 1 - 2 * epsilon
     model.fs.cstr.inlet.mole_frac_comp[0, "salicylic_acid"].fix(0.19 * major)
     model.fs.cstr.inlet.mole_frac_comp[0, "acetic_anhydride"].fix(0.78 * major)
-    model.fs.cstr.inlet.mole_frac_comp[0, "sulfuric_acid"].fix(0.01 * major)
+    model.fs.cstr.inlet.mole_frac_comp[0, "H2SO4"].fix(0.01 * major)
     model.fs.cstr.inlet.mole_frac_comp[0, "aspirin"].fix(epsilon)
     model.fs.cstr.inlet.mole_frac_comp[0, "acetic_acid"].fix(epsilon)
     model.fs.cstr.inlet.mole_frac_comp[0, "water"].fix(0.02 * major)

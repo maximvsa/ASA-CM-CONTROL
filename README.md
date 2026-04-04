@@ -2,7 +2,8 @@
 
 Personal Project To-do:
 - Complete all to-do lists in the top of each file in src/asa_cm_control
-- Implement a rigorous electrolyte route for reactions to solve for \gamma_{H+} and stuff
+- Implement a semi-rigorous electrolyte route for reactions to solve for \gamma_{H+} and stuff
+- Figure out how to get rid of static-checking error for block class reference at the top of both property packages
 - Add liquid-vapor equilibrium support to thermophysical property package
 - Add crystallization to thermophysical property package
 - Write a unit model residence time script/spec/something

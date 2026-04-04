@@ -1,5 +1,5 @@
 # To-Do:
-# - 
+# - Investigate Davies mathematical concept and usage
 
 
 """Custom liquid-focused thermophysical package for first-pass ASA synthesis modeling.
@@ -58,7 +58,7 @@ class ASAThermoParameterData(PhysicalParameterBlock):
         molecular weights, heat capacities, densities, and formation enthalpies.
         """
         super().build()
-        self._state_block_class = ASAThermoStateBlock
+        self._state_block_class = ASAThermoStateBlock  # pyright: ignore[reportUndefinedVariable]
         
         self.salicylic_acid = Component()
         self.acetic_anhydride = Component()
@@ -252,13 +252,13 @@ class ASAThermoParameterData(PhysicalParameterBlock):
                 "aspirin": 0,
                 "acetic_acid": 0,
                 "water": 0,
-                "H2SO4": 0,
+                "H2SO4": 1e3,
                 "H_plus": 0,
                 "HSO4_minus": 0,
                 "SO4_2minus": 0,
             },
             units=pyunits.dimensionless,
-            doc=""
+            doc="",
         )
         
         self.Ka1.fix()
@@ -273,24 +273,49 @@ class ASAThermoParameterData(PhysicalParameterBlock):
                 "water": 0,
                 "H2SO4": 0,
                 "H_plus": 0,
-                "HSO4_minus": 0,
+                "HSO4_minus": 1.2e-2,
                 "SO4_2minus": 0,
             },
             units=pyunits.dimensionless,
-            doc=""
+            doc="",
         )
         
         self.Ka2.fix()
         
         # NRTL Parameters:
         
-        self.nrtl_pair_set = Set(
-            initialize=[(i, j) for i in self.component_list for j in self.component_list],
+        neutral_components = [
+            "salicylic_acid",
+            "acetic_anhydride",
+            "aspirin",
+            "acetic_acid",
+            "water",
+            "H2SO4",
+        ]
+        self.neutral_component_set = Set(initialize=neutral_components)
+        self.molecular_component_set = Set(
+            initialize=[
+                "salicylic_acid",
+                "acetic_anhydride",
+                "aspirin",
+                "acetic_acid",
+                "water",
+            ]
+        )
+        self.ionic_component_set = Set(
+            initialize=[
+                "H_plus",
+                "HSO4_minus",
+                "SO4_2minus",
+            ]
+        )
+        self.neutral_pair_set = Set(
             dimen=2,
+            initialize=[(i, j) for i in neutral_components for j in neutral_components],
         )
         
         self.tau_nrtl = Var(
-            self.nrtl_pair_set,
+            self.neutral_pair_set,
             initialize=0.0,
             domain=Reals,
             units=pyunits.dimensionless
@@ -299,7 +324,7 @@ class ASAThermoParameterData(PhysicalParameterBlock):
         self.tau_nrtl.fix()
         
         self.alpha_nrtl = Var(
-            self.nrtl_pair_set,
+            self.neutral_pair_set,
             initialize=0.3,
             domain=NonNegativeReals,
             units=pyunits.dimensionless
@@ -307,9 +332,19 @@ class ASAThermoParameterData(PhysicalParameterBlock):
         
         self.alpha_nrtl.fix()
         
-        for c in self.component_list:
+        for c in self.neutral_component_set:
             self.tau_nrtl[c, c].fix(0.0)
             self.alpha_nrtl[c, c].fix(0.0)
+        
+
+        self.A_Davies = Var(
+            initialize=0.509,
+            domain=NonNegativeReals,
+            units=pyunits.dimensionless,
+            doc="Davies correlation constant at ~25C",
+        )
+
+        self.A_Davies.fix()
         
         # -----------------------------
         # tau_ij seeds (dimensionless)
@@ -422,6 +457,14 @@ class ASAThermoParameterData(PhysicalParameterBlock):
                 'P_nrtl': {'method': None},
                 'W_nrtl': {'method': None},
                 'D_nrtl': {'method': None},
+                
+                'act_coeff_true_comp': {'method': '_act_coeff_true_comp'},
+                'activity_true_comp': {'method': '_activity_true_comp'},
+                'ionic_strength': {'method': '_ionic_strength'},
+                'a_H_plus': {'method': '_a_H_plus'},
+                'x_H_plus': {'method': '_x_H_plus'},
+                'gamma_H_plus': {'method': '_gamma_H_plus'},
+                
             }
         )
         
@@ -561,17 +604,66 @@ class ASAThermoStateBlockData(StateBlockData):
         
         self.mole_frac_comp = Var(
             self.component_list,
-            initialize=1.0 / len(self.component_list),
+            initialize={
+                c: (1.0 / len(self.params.neutral_component_set))
+                if c in self.params.neutral_component_set
+                else 0.0
+                for c in self.component_list
+            },
             bounds=(0, 1),
             units=pyunits.dimensionless,
-            doc="Overall mole fraction by component",
+            doc="apparent / feed composition, what the flowsheet fixes at the inlet",
         )
+
+        if self.config.defined_state:
+            self.apparent_ionic_zero = Constraint(
+                self.params.ionic_component_set,
+                rule=lambda b, c: b.mole_frac_comp[c] == 0.0,
+            )
         
-        # Closure equation for when state is NOT fully specified (via state block configuration argument defined_state = False)
         if not self.config.defined_state:
             self.sum_mole_frac = Constraint(
                 expr=sum(self.mole_frac_comp[component] for component in self.component_list) == 1
             )
+        
+        self.mole_frac_comp_true = Var(
+            self.component_list,
+            initialize=1.0 / len(self.component_list),
+            bounds=(0, 1),
+            units=pyunits.dimensionless,
+            doc="true internal composition, what the property package solves after dissociation",
+        )
+        
+        self.true_comp_molecular_link = Constraint(
+            self.params.molecular_component_set,
+            rule=lambda b, c: b.mole_frac_comp_true[c] == b.mole_frac_comp[c],
+        )
+        
+        self.sulfur_balance = Constraint(
+            expr=self.mole_frac_comp["H2SO4"]
+            + self.mole_frac_comp["HSO4_minus"]
+            + self.mole_frac_comp["SO4_2minus"]
+            == self.mole_frac_comp_true["H2SO4"]
+            + self.mole_frac_comp_true["HSO4_minus"]
+            + self.mole_frac_comp_true["SO4_2minus"]
+        )
+        
+        self.charge_balance = Constraint(
+            expr=self.mole_frac_comp_true["H_plus"]
+            == self.mole_frac_comp_true["HSO4_minus"]
+            + 2*self.mole_frac_comp_true["SO4_2minus"]
+        )
+
+        # Sulfuric acid is treated as fully dissociated in the first proton.
+        self.first_proton_dissociation = Constraint(
+            expr=self.mole_frac_comp_true["H2SO4"] == 0.0
+        )
+
+        # Ka2 relation: a_H+ * x_SO4 = Ka2 * x_HSO4
+        self.ka2_equilibrium = Constraint(
+            expr=self.a_H_plus * self.mole_frac_comp_true["SO4_2minus"]
+            == self.params.Ka2["HSO4_minus"] * self.mole_frac_comp_true["HSO4_minus"]
+        )
     
     
     # "Required" methods for manual property packages
@@ -758,13 +850,13 @@ class ASAThermoStateBlockData(StateBlockData):
         """
         mixture_mw = sum(
             self.mole_frac_comp[component] * self.params.mw_comp[component]
-            for component in self.component_list
+            for component in self.params.neutral_component_set
         )
         mixture_molar_volume = sum(
             self.mole_frac_comp[component]
             * self.params.mw_comp[component]
             / self.params.density_liq_comp[component]
-            for component in self.component_list
+            for component in self.params.neutral_component_set
         )
         self.dens_mass = Expression(
             expr=mixture_mw / mixture_molar_volume,
@@ -866,8 +958,7 @@ class ASAThermoStateBlockData(StateBlockData):
         eps = 1e-12
         
         self.G_nrtl = Expression(
-            self.component_list,
-            self.component_list,
+            self.params.neutral_pair_set,
             rule=lambda b, i, j: exp(
                 -b.params.alpha_nrtl[i, j] * b.params.tau_nrtl[i, j]
             ),
@@ -875,57 +966,55 @@ class ASAThermoStateBlockData(StateBlockData):
         )
         
         self.S_nrtl = Expression(
-            self.component_list,
+            self.params.neutral_component_set,
             rule=lambda b, i: sum(
-                b.mole_frac_comp[k] * b.G_nrtl[k, i]
-                for k in b.component_list
+                b.mole_frac_comp_true[k] * b.G_nrtl[k, i]
+                for k in b.params.neutral_component_set
             ) + eps,
             doc="NRTL S_i = sum_k x_k G_ki",
         )
         
         self.N_nrtl = Expression(
-            self.component_list,
+            self.params.neutral_component_set,
             rule=lambda b, i: sum(
-                b.mole_frac_comp[j]
+                b.mole_frac_comp_true[j]
                 * b.params.tau_nrtl[j, i]
                 * b.G_nrtl[j, i]
-                for j in b.component_list
+                for j in b.params.neutral_component_set
             ),
             doc="NRTL N_i = sum_j x_j tau_ji G_ji",
         )
         
         self.Q_nrtl = Expression(
-            self.component_list,
+            self.params.neutral_component_set,
             rule=lambda b, j: sum(
-                b.mole_frac_comp[k] * b.G_nrtl[k, j]
-                for k in b.component_list
+                b.mole_frac_comp_true[k] * b.G_nrtl[k, j]
+                for k in b.params.neutral_component_set
             ) + eps,
             doc="NRTL Q_j = sum_k x_k G_kj",
         )
         
         self.P_nrtl = Expression(
-            self.component_list,
+            self.params.neutral_component_set,
             rule=lambda b, j: sum(
-                b.mole_frac_comp[m]
+                b.mole_frac_comp_true[m]
                 * b.params.tau_nrtl[m, j]
                 * b.G_nrtl[m, j]
-                for m in b.component_list
+                for m in b.params.neutral_component_set
             ),
             doc="NRTL P_j = sum_m x_m tau_mj G_mj",
         )
         
         self.W_nrtl = Expression(
-            self.component_list,
-            self.component_list,
+            self.params.neutral_pair_set,
             rule=lambda b, i, j: (
-                b.mole_frac_comp[j] * b.G_nrtl[i, j] / b.Q_nrtl[j]
+                b.mole_frac_comp_true[j] * b.G_nrtl[i, j] / b.Q_nrtl[j]
             ),
             doc="NRTL W_ij = x_j G_ij / Q_j",
         )
         
         self.D_nrtl = Expression(
-            self.component_list,
-            self.component_list,
+            self.params.neutral_pair_set,
             rule=lambda b, i, j: (
                 b.params.tau_nrtl[i, j] - b.P_nrtl[j] / b.Q_nrtl[j]
             ),
@@ -936,13 +1025,70 @@ class ASAThermoStateBlockData(StateBlockData):
             self.component_list,
             rule=lambda b, i: (
                 b.N_nrtl[i] / b.S_nrtl[i]
-                + sum(b.W_nrtl[i, j] * b.D_nrtl[i, j] for j in b.component_list)
-            ),
+                + sum(
+                    b.W_nrtl[i, j] * b.D_nrtl[i, j]
+                    for j in b.params.neutral_component_set
+                )
+            )
+            if i in b.params.neutral_component_set
+            else 0.0,
             doc="NRTL ln(gamma_i)",
         )
         
         self.act_coeff_liq_comp = Expression(
             self.component_list,
-            rule=lambda b, i: exp(b.log_gamma_liq_comp[i]),
+            rule=lambda b, i: exp(b.log_gamma_liq_comp[i])
+            if i in b.params.neutral_component_set
+            else 1.0,
             doc="Liquid activity coefficient gamma_i from NRTL",
         )
+
+    def _ionic_strength(self):
+        """Build ionic strength expression from the true ionic composition."""
+        self.ionic_strength = Expression(
+            expr=0.5 * (
+                self.mole_frac_comp_true["H_plus"]
+                + self.mole_frac_comp_true["HSO4_minus"]
+                + 4 * self.mole_frac_comp_true["SO4_2minus"]
+            )
+        )
+
+
+    def _x_H_plus(self):
+        """Build helper expression for true proton mole fraction."""
+        self.x_H_plus = Expression(expr=self.mole_frac_comp_true["H_plus"])
+
+
+    def _gamma_H_plus(self):
+        """Build Davies activity-coefficient expression for the proton."""
+        eps = 1e-12
+        sqrt_i = (self.ionic_strength + eps) ** 0.5
+        self.log10_gamma_H_plus = Expression(
+            expr=-self.params.A_Davies * (
+                sqrt_i / (1 + sqrt_i) - 0.3 * self.ionic_strength
+            )
+        )
+        self.gamma_H_plus = Expression(expr=10 ** self.log10_gamma_H_plus)
+
+
+    def _act_coeff_true_comp(self):
+        """Build hybrid activity coefficients: NRTL for neutral, Davies for H+."""
+        self.act_coeff_true_comp = Expression(
+            self.component_list,
+            rule=lambda b, i: b.act_coeff_liq_comp[i]
+            if i in b.params.neutral_component_set
+            else (b.gamma_H_plus if i == "H_plus" else 1.0),
+        )
+
+
+    def _activity_true_comp(self):
+        """Build true-species activities used by reaction kinetics."""
+        self.activity_true_comp = Expression(
+            self.component_list,
+            rule=lambda b, i: b.act_coeff_true_comp[i] * b.mole_frac_comp_true[i],
+        )
+
+
+    def _a_H_plus(self):
+        """Build helper expression for proton activity."""
+        self.a_H_plus = Expression(expr=self.activity_true_comp["H_plus"])

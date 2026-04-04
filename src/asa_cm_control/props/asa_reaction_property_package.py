@@ -1,5 +1,6 @@
 # To-Do:
 # - Fill out the doc string kwarg pass-ins for everything
+# - Check if there is any other 
 
 
 """Custom reaction property package for ASA synthesis kinetics.
@@ -58,7 +59,7 @@ class ASAReactionParameterData(ReactionParameterBlock):
         """
         
         super().build()
-        self._reaction_block_class = ASAReactionBlock
+        self._reaction_block_class = ASAReactionBlock  # pyright: ignore[reportUndefinedVariable]
         
         property_package = self.config.property_package
         if property_package is None:
@@ -74,67 +75,28 @@ class ASAReactionParameterData(ReactionParameterBlock):
         # Empty for now, might be filled in later if any reactions get upgraded to equilibrium
         self.equilibrium_reaction_idx = Set(initialize=[])
         
-        self.rate_reaction_stoichiometry = {
-            # r1: salicylic_acid + acetic_anhydride -> aspirin + acetic_acid (liquid only)
-            ("r1_aspirin_synthesis", "liquid", "salicylic_acid"): -1,
-            ("r1_aspirin_synthesis", "liquid", "acetic_anhydride"): -1,
-            ("r1_aspirin_synthesis", "liquid", "sulfuric_acid"): 0,
-            ("r1_aspirin_synthesis", "liquid", "aspirin"): 1,
-            ("r1_aspirin_synthesis", "liquid", "acetic_acid"): 1,
-            ("r1_aspirin_synthesis", "liquid", "water"): 0,
-            ("r1_aspirin_synthesis", "vapor", "salicylic_acid"): 0,
-            ("r1_aspirin_synthesis", "vapor", "acetic_anhydride"): 0,
-            ("r1_aspirin_synthesis", "vapor", "sulfuric_acid"): 0,
-            ("r1_aspirin_synthesis", "vapor", "aspirin"): 0,
-            ("r1_aspirin_synthesis", "vapor", "acetic_acid"): 0,
-            ("r1_aspirin_synthesis", "vapor", "water"): 0,
-            ("r1_aspirin_synthesis", "solid", "salicylic_acid"): 0,
-            ("r1_aspirin_synthesis", "solid", "acetic_anhydride"): 0,
-            ("r1_aspirin_synthesis", "solid", "sulfuric_acid"): 0,
-            ("r1_aspirin_synthesis", "solid", "aspirin"): 0,
-            ("r1_aspirin_synthesis", "solid", "acetic_acid"): 0,
-            ("r1_aspirin_synthesis", "solid", "water"): 0,
-            
-            # r2: acetic_anhydride + water -> 2 acetic_acid (liquid only)
-            ("r2_acetic_anhydride_hydrolysis", "liquid", "salicylic_acid"): 0,
-            ("r2_acetic_anhydride_hydrolysis", "liquid", "acetic_anhydride"): -1,
-            ("r2_acetic_anhydride_hydrolysis", "liquid", "sulfuric_acid"): 0,
-            ("r2_acetic_anhydride_hydrolysis", "liquid", "aspirin"): 0,
-            ("r2_acetic_anhydride_hydrolysis", "liquid", "acetic_acid"): 2,
-            ("r2_acetic_anhydride_hydrolysis", "liquid", "water"): -1,
-            ("r2_acetic_anhydride_hydrolysis", "vapor", "salicylic_acid"): 0,
-            ("r2_acetic_anhydride_hydrolysis", "vapor", "acetic_anhydride"): 0,
-            ("r2_acetic_anhydride_hydrolysis", "vapor", "sulfuric_acid"): 0,
-            ("r2_acetic_anhydride_hydrolysis", "vapor", "aspirin"): 0,
-            ("r2_acetic_anhydride_hydrolysis", "vapor", "acetic_acid"): 0,
-            ("r2_acetic_anhydride_hydrolysis", "vapor", "water"): 0,
-            ("r2_acetic_anhydride_hydrolysis", "solid", "salicylic_acid"): 0,
-            ("r2_acetic_anhydride_hydrolysis", "solid", "acetic_anhydride"): 0,
-            ("r2_acetic_anhydride_hydrolysis", "solid", "sulfuric_acid"): 0,
-            ("r2_acetic_anhydride_hydrolysis", "solid", "aspirin"): 0,
-            ("r2_acetic_anhydride_hydrolysis", "solid", "acetic_acid"): 0,
-            ("r2_acetic_anhydride_hydrolysis", "solid", "water"): 0,
-            
-            # r3: aspirin + water -> salicylic_acid + acetic_acid (liquid_only)
-            ("r3_aspirin_hydrolysis", "liquid", "salicylic_acid"): 1,
-            ("r3_aspirin_hydrolysis", "liquid", "acetic_anhydride"): 0,
-            ("r3_aspirin_hydrolysis", "liquid", "sulfuric_acid"): 0,
-            ("r3_aspirin_hydrolysis", "liquid", "aspirin"): -1,
-            ("r3_aspirin_hydrolysis", "liquid", "acetic_acid"): 1,
-            ("r3_aspirin_hydrolysis", "liquid", "water"): -1,
-            ("r3_aspirin_hydrolysis", "vapor", "salicylic_acid"): 0,
-            ("r3_aspirin_hydrolysis", "vapor", "acetic_anhydride"): 0,
-            ("r3_aspirin_hydrolysis", "vapor", "sulfuric_acid"): 0,
-            ("r3_aspirin_hydrolysis", "vapor", "aspirin"): 0,
-            ("r3_aspirin_hydrolysis", "vapor", "acetic_acid"): 0,
-            ("r3_aspirin_hydrolysis", "vapor", "water"): 0,
-            ("r3_aspirin_hydrolysis", "solid", "salicylic_acid"): 0,
-            ("r3_aspirin_hydrolysis", "solid", "acetic_anhydride"): 0,
-            ("r3_aspirin_hydrolysis", "solid", "sulfuric_acid"): 0,
-            ("r3_aspirin_hydrolysis", "solid", "aspirin"): 0,
-            ("r3_aspirin_hydrolysis", "solid", "acetic_acid"): 0,
-            ("r3_aspirin_hydrolysis", "solid", "water"): 0,
-        }
+        self.rate_reaction_stoichiometry = {}
+        for rxn in self.rate_reaction_idx:
+            for phase in property_package.phase_list:
+                for comp in property_package.component_list:
+                    self.rate_reaction_stoichiometry[(rxn, phase, comp)] = 0
+
+        # r1: salicylic_acid + acetic_anhydride -> aspirin + acetic_acid (liquid only)
+        self.rate_reaction_stoichiometry[("r1_aspirin_synthesis", "liquid", "salicylic_acid")] = -1
+        self.rate_reaction_stoichiometry[("r1_aspirin_synthesis", "liquid", "acetic_anhydride")] = -1
+        self.rate_reaction_stoichiometry[("r1_aspirin_synthesis", "liquid", "aspirin")] = 1
+        self.rate_reaction_stoichiometry[("r1_aspirin_synthesis", "liquid", "acetic_acid")] = 1
+
+        # r2: acetic_anhydride + water -> 2 acetic_acid (liquid only)
+        self.rate_reaction_stoichiometry[("r2_acetic_anhydride_hydrolysis", "liquid", "acetic_anhydride")] = -1
+        self.rate_reaction_stoichiometry[("r2_acetic_anhydride_hydrolysis", "liquid", "acetic_acid")] = 2
+        self.rate_reaction_stoichiometry[("r2_acetic_anhydride_hydrolysis", "liquid", "water")] = -1
+
+        # r3: aspirin + water -> salicylic_acid + acetic_acid (liquid only)
+        self.rate_reaction_stoichiometry[("r3_aspirin_hydrolysis", "liquid", "salicylic_acid")] = 1
+        self.rate_reaction_stoichiometry[("r3_aspirin_hydrolysis", "liquid", "aspirin")] = -1
+        self.rate_reaction_stoichiometry[("r3_aspirin_hydrolysis", "liquid", "acetic_acid")] = 1
+        self.rate_reaction_stoichiometry[("r3_aspirin_hydrolysis", "liquid", "water")] = -1
         
         # EMPTY FOR NOW, WILL FILL IN IF EQUILIBRIUM REACTIONS ARE EVER USED
         self.equilibrium_reaction_stoichiometry = {}
@@ -433,15 +395,14 @@ class ASAReactionBlockData(ReactionBlockDataBase):
         
         state = self.state_ref
         params = self.params
-        gamma = state.act_coeff_liq_comp
         eps = 1e-12
         R = 8.314462618 * pyunits.J / pyunits.mol / pyunits.K
         
-        a_hplus = gamma["sulfuric_acid"] * state.mole_frac_comp["sulfuric_acid"] + eps
-        a_sa = gamma["salicylic_acid"] * state.mole_frac_comp["salicylic_acid"] + eps
-        a_aa = gamma["acetic_anhydride"] * state.mole_frac_comp["acetic_anhydride"] + eps
-        a_h2o = gamma["water"] * state.mole_frac_comp["water"] + eps
-        a_asa = gamma["aspirin"] * state.mole_frac_comp["aspirin"] + eps
+        a_sa  = state.activity_true_comp["salicylic_acid"] + eps
+        a_aa  = state.activity_true_comp["acetic_anhydride"] + eps
+        a_h2o = state.activity_true_comp["water"] + eps
+        a_asa = state.activity_true_comp["aspirin"] + eps
+        a_hplus = state.activity_true_comp["H_plus"] + eps
         
         def reaction_rule(b, reaction):
             

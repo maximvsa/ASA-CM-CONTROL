@@ -1,17 +1,5 @@
 # To-Do:
-# - Investigate Davies mathematical concept and usage
-
-
-"""Custom liquid-focused thermophysical package for first-pass ASA synthesis modeling.
-
-This module defines a manual IDAES property package with:
-- A parameter block containing component/phase definitions and fixed global constants.
-- A state block with required interface methods for material and energy balances.
-- Build-on-demand property expressions used by downstream unit models.
-
-The current implementation assumes a liquid-dominant approximation for derived
-phase quantities.
-"""
+# - 
 
 from idaes.core import (
     declare_process_block_class,
@@ -38,9 +26,6 @@ from pyomo.environ import (Var,
 from idaes.core.util.initialization import fix_state_vars, revert_state_vars
 from idaes.core.util.exceptions import ConfigurationError
 import idaes.logger as idaeslog
-
-
-# PARAMETER BLOCK CLASS
 
 @declare_process_block_class("ASAThermoParameterBlock")
 class ASAThermoParameterData(PhysicalParameterBlock):

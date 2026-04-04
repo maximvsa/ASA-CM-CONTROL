@@ -482,12 +482,7 @@ class ASAThermoParameterData(PhysicalParameterBlock):
 # STATE BLOCK CLASSES
 
 class ASAThermoStateBlockMethods(StateBlock):
-    """Mixin methods attached to the generated ThermoStateBlock class.
-
-    These methods provide initialization and state-release utilities required by
-    IDAES workflows.
-    """
-
+    
     def initialize(
         self,
         state_args=None,
@@ -497,19 +492,6 @@ class ASAThermoStateBlockMethods(StateBlock):
         solver=None,
         optarg=None,
     ):
-        """Initialize state variables for one or more state block instances.
-
-        Args:
-            state_args: Optional dictionary of state variable initial guesses.
-            state_vars_fixed: If True, assumes the caller already fixed state vars.
-            hold_state: If True, keep variables fixed and return release flags.
-            outlvl: IDAES logging level.
-            solver: Unused placeholder for API compatibility.
-            optarg: Unused placeholder for API compatibility.
-
-        Returns:
-            dict or None: A flags dictionary if hold_state is True, otherwise None.
-        """
         init_log = idaeslog.getInitLogger(self.name, outlvl, tag="properties")
         
         # Fix state variables unless caller already did so
@@ -566,21 +548,10 @@ class ASAThermoStateBlockMethods(StateBlock):
 
 @declare_process_block_class("ASAThermoStateBlock", block_class=ASAThermoStateBlockMethods)
 class ASAThermoStateBlockData(StateBlockData):
-    """State block data class for the custom ASA thermophysical package.
-
-    This class defines state variables and build-on-demand property expressions
-    used in material and energy balances under a liquid-focused approximation.
-    """
     
     def build(self):
-        """Construct state variables and optional mole-fraction closure equation.
-
-        Creates flow, temperature, pressure, and composition state variables.
-        When defined_state is False, adds a mole-fraction summation constraint.
-        """
         super().build()
         
-        # State variables
         self.flow_mol = Var(
             initialize=1.0,
             domain=NonNegativeReals,
@@ -612,69 +583,21 @@ class ASAThermoStateBlockData(StateBlockData):
             },
             bounds=(0, 1),
             units=pyunits.dimensionless,
-            doc="apparent / feed composition, what the flowsheet fixes at the inlet",
+            doc="",
         )
-
-        if self.config.defined_state:
-            self.apparent_ionic_zero = Constraint(
-                self.params.ionic_component_set,
-                rule=lambda b, c: b.mole_frac_comp[c] == 0.0,
-            )
         
         if not self.config.defined_state:
             self.sum_mole_frac = Constraint(
                 expr=sum(self.mole_frac_comp[component] for component in self.component_list) == 1
             )
         
-        self.mole_frac_comp_true = Var(
+        self.mole_frac_comp_true = Expression(
             self.component_list,
-            initialize=1.0 / len(self.component_list),
-            bounds=(0, 1),
-            units=pyunits.dimensionless,
-            doc="true internal composition, what the property package solves after dissociation",
+            rule=lambda block, component: block.mole_frac_comp[component],
+            doc="",
         )
-        
-        self.true_comp_molecular_link = Constraint(
-            self.params.molecular_component_set,
-            rule=lambda b, c: b.mole_frac_comp_true[c] == b.mole_frac_comp[c],
-        )
-        
-        self.sulfur_balance = Constraint(
-            expr=self.mole_frac_comp["H2SO4"]
-            + self.mole_frac_comp["HSO4_minus"]
-            + self.mole_frac_comp["SO4_2minus"]
-            == self.mole_frac_comp_true["H2SO4"]
-            + self.mole_frac_comp_true["HSO4_minus"]
-            + self.mole_frac_comp_true["SO4_2minus"]
-        )
-        
-        self.charge_balance = Constraint(
-            expr=self.mole_frac_comp_true["H_plus"]
-            == self.mole_frac_comp_true["HSO4_minus"]
-            + 2*self.mole_frac_comp_true["SO4_2minus"]
-        )
-
-        # Ka1 relation: a_H+ * x_HSO4 = Ka1 * x_H2SO4
-        self.ka1_equilibrium = Constraint(
-            expr=self.a_H_plus * self.mole_frac_comp_true["HSO4_minus"]
-            == self.params.Ka1["H2SO4"] * self.mole_frac_comp_true["H2SO4"]
-        )
-
-        # Ka2 relation: a_H+ * x_SO4 = Ka2 * x_HSO4
-        self.ka2_equilibrium = Constraint(
-            expr=self.a_H_plus * self.mole_frac_comp_true["SO4_2minus"]
-            == self.params.Ka2["HSO4_minus"] * self.mole_frac_comp_true["HSO4_minus"]
-        )
-    
-    
-    # "Required" methods for manual property packages
     
     def define_state_vars(self):
-        """Return the dictionary of primary state variables.
-
-        Returns:
-            dict: Mapping of state variable names to Pyomo variable objects.
-        """
         return {
             "flow_mol": self.flow_mol,
             "temperature": self.temperature,

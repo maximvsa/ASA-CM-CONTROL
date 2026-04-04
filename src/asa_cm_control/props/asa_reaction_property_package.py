@@ -1,17 +1,6 @@
 # To-Do:
 # - Fill out the doc string kwarg pass-ins for everything
-# - Check if there is any other 
-
-
-"""Custom reaction property package for ASA synthesis kinetics.
-
-This module defines an IDAES reaction package with:
-- A reaction parameter block containing stoichiometry and fixed kinetic constants.
-- A reaction state block that builds reaction-rate expressions on demand.
-
-Current scope is liquid-phase kinetics for aspirin synthesis and acetic
-anhydride hydrolysis.
-"""
+# - Check if there is any other reactions that could be added
 
 from idaes.core import (
     declare_process_block_class,
@@ -36,27 +25,10 @@ from pyomo.environ import (
 from idaes.core.util.exceptions import ConfigurationError
 import idaes.logger as idaeslog
 
-
-# PARAMETER BLOCK CLASS
-
 @declare_process_block_class("ASAReactionParameterBlock")
 class ASAReactionParameterData(ReactionParameterBlock):
-    """Reaction parameter block for ASA process chemistry.
-
-    The block stores reaction indices, stoichiometric maps, and fixed kinetic
-    parameters used by associated reaction state blocks.
-    """
-
+    
     def build(self):
-        """Construct reaction sets, stoichiometry, and kinetic parameters.
-
-        Defines two liquid-phase rate reactions:
-        - r1_aspirin_synthesis
-        - r2_acetic_anhydride_hydrolysis
-
-        Kinetic constants are stored as fixed Vars for straightforward
-        calibration updates and reproducible simulation behavior.
-        """
         
         super().build()
         self._reaction_block_class = ASAReactionBlock  # pyright: ignore[reportUndefinedVariable]
@@ -65,46 +37,72 @@ class ASAReactionParameterData(ReactionParameterBlock):
         if property_package is None:
             raise ConfigurationError("ASAReactionParameterBlock requires property_package.")
         
-        self.rate_reaction_idx = Set(initialize=[
-            "r1_aspirin_synthesis",
-            "r2_acetic_anhydride_hydrolysis",
-            "r3_aspirin_hydrolysis"
+        self.rate_reaction_idx = Set(
+            initialize=[
+                "r1_aspirin_synthesis",
+                "r2_acetic_anhydride_hydrolysis",
+                "r3_aspirin_hydrolysis",
             ]
         )
-        
-        # Empty for now, might be filled in later if any reactions get upgraded to equilibrium
-        self.equilibrium_reaction_idx = Set(initialize=[])
         
         self.rate_reaction_stoichiometry = {}
         for rxn in self.rate_reaction_idx:
             for phase in property_package.phase_list:
                 for comp in property_package.component_list:
                     self.rate_reaction_stoichiometry[(rxn, phase, comp)] = 0
-
-        # r1: salicylic_acid + acetic_anhydride -> aspirin + acetic_acid (liquid only)
+        
         self.rate_reaction_stoichiometry[("r1_aspirin_synthesis", "liquid", "salicylic_acid")] = -1
         self.rate_reaction_stoichiometry[("r1_aspirin_synthesis", "liquid", "acetic_anhydride")] = -1
         self.rate_reaction_stoichiometry[("r1_aspirin_synthesis", "liquid", "aspirin")] = 1
         self.rate_reaction_stoichiometry[("r1_aspirin_synthesis", "liquid", "acetic_acid")] = 1
-
-        # r2: acetic_anhydride + water -> 2 acetic_acid (liquid only)
+        
         self.rate_reaction_stoichiometry[("r2_acetic_anhydride_hydrolysis", "liquid", "acetic_anhydride")] = -1
         self.rate_reaction_stoichiometry[("r2_acetic_anhydride_hydrolysis", "liquid", "acetic_acid")] = 2
         self.rate_reaction_stoichiometry[("r2_acetic_anhydride_hydrolysis", "liquid", "water")] = -1
-
-        # r3: aspirin + water -> salicylic_acid + acetic_acid (liquid only)
+        
         self.rate_reaction_stoichiometry[("r3_aspirin_hydrolysis", "liquid", "salicylic_acid")] = 1
         self.rate_reaction_stoichiometry[("r3_aspirin_hydrolysis", "liquid", "aspirin")] = -1
         self.rate_reaction_stoichiometry[("r3_aspirin_hydrolysis", "liquid", "acetic_acid")] = 1
         self.rate_reaction_stoichiometry[("r3_aspirin_hydrolysis", "liquid", "water")] = -1
         
-        # EMPTY FOR NOW, WILL FILL IN IF EQUILIBRIUM REACTIONS ARE EVER USED
+        self.equilibrium_reaction_idx = Set(
+            initialize=[
+                "e1_h2so4_dissociation",
+                "e2_hso4_dissociation",
+            ]
+        )
+        
         self.equilibrium_reaction_stoichiometry = {}
+        for reaction in self.equilibrium_reaction_idx:
+            for phase in property_package.phase_list:
+                for component in property_package.component_list:
+                    self.equilibrium_reaction_stoichiometry[(reaction, phase, component)] = 0
+        
+        self.equilibrium_reaction_stoichiometry[("e1_h2so4_dissociation", "liquid", "H2SO4")] = -1
+        self.equilibrium_reaction_stoichiometry[("e1_h2so4_dissociation", "liquid", "H_plus")] = 1
+        self.equilibrium_reaction_stoichiometry[("e1_h2so4_dissociation", "liquid", "HSO4_minus")] = 1
+        
+        self.equilibrium_reaction_stoichiometry[("e2_hso4_dissociation", "liquid", "HSO4_minus")] = -1
+        self.equilibrium_reaction_stoichiometry[("e2_hso4_dissociation", "liquid", "H_plus")] = 1
+        self.equilibrium_reaction_stoichiometry[("e2_hso4_dissociation", "liquid", "SO4_2minus")] = 1
+        
+        self.Keq_e1 = Var(
+            initialize=1e3,
+            domain=PositiveReals,
+            units=pyunits.dimensionless,
+        )
+        
+        self.Keq_e1.fix()
+        
+        self.Keq_e2 = Var(
+            initialize=1.2e-2,
+            domain=PositiveReals,
+            units=pyunits.dimensionless,
+        )
+        
+        self.Keq_e2.fix()
         
         reaction_rate_units = pyunits.mol / pyunits.m**3 / pyunits.s
-        
-        
-        # PARAMETER SET FOR REACTION 1
         
         self.A0_1 = Var(
             initialize=0.0,
@@ -300,19 +298,14 @@ class ASAReactionParameterData(ReactionParameterBlock):
         )
         
         self.beta_3.fix()
-
+    
     @classmethod
     def define_metadata(cls, obj):
-        """Declare supported reaction properties and default units.
-
-        Args:
-            cls: Reaction parameter block class reference.
-            obj: IDAES metadata object to populate.
-        """
         
         obj.add_properties(
             {
                 'reaction_rate': {'method': '_reaction_rate'},
+                'equilibrium_constraint': {'method': '_equilibrium_constraint'},
             }
         )
         
@@ -322,7 +315,7 @@ class ASAReactionParameterData(ReactionParameterBlock):
                 'length': pyunits.m,
                 'mass': pyunits.kg,
                 'amount': pyunits.mol,
-                'temperature': pyunits.K
+                'temperature': pyunits.K,
             }
         )
 
@@ -330,7 +323,6 @@ class ASAReactionParameterData(ReactionParameterBlock):
 # REACTION BLOCK CLASSES
 
 class ASAReactionBlockMethods(ReactionBlockBase):
-    """Mixin methods attached to the generated ASAReactionBlock class."""
     
     def initialize(
         self,
@@ -339,17 +331,6 @@ class ASAReactionBlockMethods(ReactionBlockBase):
         solver=None,
         optarg=None,
     ):
-        """Initialize reaction block data and log completion.
-
-        Args:
-            state_vars_fixed: Placeholder for API compatibility.
-            outlvl: IDAES logging level.
-            solver: Placeholder for API compatibility.
-            optarg: Placeholder for API compatibility.
-
-        Returns:
-            None
-        """
         init_log = idaeslog.getInitLogger(self.name, outlvl, tag="reactions")
         init_log.info("Reaction initialization complete (no solve required).")
         
@@ -361,41 +342,19 @@ class ASAReactionBlockMethods(ReactionBlockBase):
 
 @declare_process_block_class("ASAReactionBlock", block_class=ASAReactionBlockMethods)
 class ASAReactionBlockData(ReactionBlockDataBase):
-    """Reaction state block data class for ASA reaction-rate calculations."""
     
     def build(self):
-        """Construct the reaction block data object."""
-        
         super().build()
+        if self.config.has_equilibrium:
+            self._equilibrium_constraint()
     
     def get_reaction_rate_basis(self):
-        """Return the reaction-rate basis.
-
-        Returns:
-            MaterialFlowBasis: MaterialFlowBasis.molar.
-        """
         return MaterialFlowBasis.molar
     
     def _reaction_rate(self):
-        """Build reaction-rate expressions for the configured rate reactions.
-
-        Activity approximation:
-            a_i = gamma_i x_i
-
-        Arrhenius terms:
-            k_0 = A_0 exp(-E_{a,0} / (R T))
-            k_cat = A_cat exp(-E_{a,cat} / (R T))
-
-        Rate forms:
-            r_1 = (k_0 + k_cat a_H+^{m_1}) a_SA^{alpha_1} a_AA^{beta_1}
-            r_2 = (k_0 + k_cat a_H+^{m_2}) a_AA^{alpha_2} a_H2O^{beta_2}
-
-        where SA is salicylic acid and AA is acetic anhydride.
-        """
-        
         state = self.state_ref
         params = self.params
-        eps = 1e-12
+        eps = 1e-8
         R = 8.314462618 * pyunits.J / pyunits.mol / pyunits.K
         
         a_sa  = state.activity_true_comp["salicylic_acid"] + eps
@@ -433,3 +392,24 @@ class ASAReactionBlockData(ReactionBlockDataBase):
             )
         
         self.reaction_rate = Expression(params.rate_reaction_idx, rule=reaction_rule)
+    
+    def _equilibrium_constraint(self):
+        state = self.state_ref
+        epsilon = 1e-8
+        
+        a_h2so4 = state.activity_true_comp["H2SO4"] + epsilon
+        a_hplus = state.activity_true_comp["H_plus"] + epsilon
+        a_hso4 = state.activity_true_comp["HSO4_minus"] + epsilon
+        a_so4 = state.activity_true_comp["SO4_2minus"] + epsilon
+        
+        def equilibrium_rule(block, reaction):
+            if reaction == "e1_h2so4_dissociation":
+                return a_hplus * a_hso4 == block.params.Keq_e1 * a_h2so4
+            if reaction == "e2_hso4_dissociation":
+                return a_hplus * a_so4 == block.params.Keq_e2 * a_hso4
+            raise ConfigurationError(f"Unknown equilibrium reaction {reaction}")
+        
+        self.equilibrium_constraint = Constraint(
+            self.params.equilibrium_reaction_idx,
+            rule=equilibrium_rule
+        )
